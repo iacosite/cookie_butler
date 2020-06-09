@@ -14,3 +14,6 @@ The current way I use this is by:
     * `CookieButler.Restart()` 
 
 In case you want to change the mod settings, just edit the variable `CookieButler.Settings` and restart the mod with `CookieButler.Restart()` 
+
+# Sponsor
+If you liked CookieButler and would like to contibute, either get involved or buy me a beer! -> [:beer:](https://www.paypal.me/iacosite/10USD) (or a coffee [:coffee:](https://www.paypal.me/iacosite/5USD)).
