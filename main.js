@@ -36,8 +36,10 @@ var CookieButler={
     Activate:function() {
           CookieButler.Settings.ManageWrinklersInterval=window.setInterval(CookieButler.ManageWrinklers, CookieButler.Settings.ManageWrinklersInterval_ms);
           CookieButler.Stats.Update('Activated', 'ManageWrinklersInterval', CookieButler.Settings.ManageWrinklersInterval_ms);
+          console.log('Activated', 'ManageWrinklersInterval');
           CookieButler.Settings.ManageShimmersInterval=window.setInterval(CookieButler.ManageShimmers, CookieButler.Settings.ManageShimmersInterval_ms);
           CookieButler.Stats.Update('Activated', 'ManageShimmersInterval', CookieButler.Settings.ManageShimmersInterval_ms);
+          console.log('Activated', 'ManageShimmersInterval');
       },
   
     Deactivate:function() {
@@ -45,12 +47,14 @@ var CookieButler={
               window.clearInterval(CookieButler.Settings.ManageWrinklersInterval);
               CookieButler.Settings.ManageWrinklersInterval=null;
               CookieButler.Stats.Update('Deactivated', 'ManageWrinklersInterval', 1);
+              console.log('Deactivated', 'ManageWrinklersInterval');
           }
   
           if(CookieButler.Settings.ManageShimmersInterval !== null) {
               window.clearInterval(CookieButler.Settings.ManageShimmersInterval);
               CookieButler.Settings.ManageShimmersInterval=null;
               CookieButler.Stats.Update('Deactivated', 'ManageShimmersInterval', 1);
+              console.log('Deactivated', 'ManageShimmersInterval');
           }
       },
   
