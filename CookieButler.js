@@ -2,11 +2,22 @@ var CookieButler={
     Settings:{
       ManageWrinklersInterval_ms:5000,
       ManageWrinklersInterval:null,
+
       ManageShimmersInterval_ms:1000,
       ManageShimmersInterval:null,
 
+      ManageClickFrenzyInterval_ms:1000,
+      ManageClickFrenzyInterval:null,
+
+      ManageDragonflightInterval_ms:1000,
+      ManageDragonflightInterval:null,
+
+      ManageElderFrenzyInterval_ms:1000,
+      ManageElderFrenzyInterval:null,
+
       LoggingLevel:0, //0:none, 1:all
       },
+
       Stats:{
           Historic:[],
 
@@ -37,9 +48,22 @@ var CookieButler={
           CookieButler.Settings.ManageWrinklersInterval=window.setInterval(CookieButler.ManageWrinklers, CookieButler.Settings.ManageWrinklersInterval_ms);
           CookieButler.Stats.Update('Activated', 'ManageWrinklersInterval', CookieButler.Settings.ManageWrinklersInterval_ms);
           console.log('Activated', 'ManageWrinklersInterval');
+          
           CookieButler.Settings.ManageShimmersInterval=window.setInterval(CookieButler.ManageShimmers, CookieButler.Settings.ManageShimmersInterval_ms);
           CookieButler.Stats.Update('Activated', 'ManageShimmersInterval', CookieButler.Settings.ManageShimmersInterval_ms);
           console.log('Activated', 'ManageShimmersInterval');
+          
+          CookieButler.Settings.ManageClickFrenzyInterval=window.setInterval(CookieButler.ManageShimmers, CookieButler.Settings.ManageClickFrenzyInterval_ms);
+          CookieButler.Stats.Update('Activated', 'ManageClickFrenzyInterval', CookieButler.Settings.ManageClickFrenzyInterval_ms);
+          console.log('Activated', 'ManageClickFrenzyInterval');
+          
+          CookieButler.Settings.ManageDragonflightInterval=window.setInterval(CookieButler.ManageShimmers, CookieButler.Settings.ManageDragonflightInterval_ms);
+          CookieButler.Stats.Update('Activated', 'ManageDragonflightInterval', CookieButler.Settings.ManageDragonflightInterval_ms);
+          console.log('Activated', 'ManageDragonflightInterval');
+
+          CookieButler.Settings.ManageElderFrenzyInterval=window.setInterval(CookieButler.ManageShimmers, CookieButler.Settings.ManageElderFrenzyInterval_ms);
+          CookieButler.Stats.Update('Activated', 'ManageElderFrenzyInterval', CookieButler.Settings.ManageElderFrenzyInterval_ms);
+          console.log('Activated', 'ManageElderFrenzyInterval');
       },
   
     Deactivate:function() {
@@ -56,6 +80,28 @@ var CookieButler={
               CookieButler.Stats.Update('Deactivated', 'ManageShimmersInterval', 1);
               console.log('Deactivated', 'ManageShimmersInterval');
           }
+
+          if(CookieButler.Settings.ManageClickFrenzyInterval !== null) {
+            window.clearInterval(CookieButler.Settings.ManageClickFrenzyInterval);
+            CookieButler.Settings.ManageClickFrenzyInterval=null;
+            CookieButler.Stats.Update('Deactivated', 'ManageClickFrenzyInterval', 1);
+            console.log('Deactivated', 'ManageClickFrenzyInterval');
+        }
+
+        if(CookieButler.Settings.ManageDragonflightInterval !== null) {
+            window.clearInterval(CookieButler.Settings.ManageDragonflightInterval);
+            CookieButler.Settings.ManageDragonflightInterval=null;
+            CookieButler.Stats.Update('Deactivated', 'ManageDragonflightInterval', 1);
+            console.log('Deactivated', 'ManageDragonflightInterval');
+        }
+
+        if(CookieButler.Settings.ManageElderFrenzyInterval !== null) {
+            window.clearInterval(CookieButler.Settings.ManageElderFrenzyInterval);
+            CookieButler.Settings.ManageElderFrenzyInterval=null;
+            CookieButler.Stats.Update('Deactivated', 'ManageElderFrenzyInterval', 1);
+            console.log('Deactivated', 'ManageElderFrenzyInterval');
+        }
+        
       },
   
     Restart:function() {
@@ -118,7 +164,7 @@ var CookieButler={
           CookieButler.CookieFunctionalities.AutoClicker.Retreat('Dragonflight');
         }
       },
-
+      
       ManageElderFrenzy:function() {
         // Enable autoclicker while `Dragonflight` buff is enabled
         if (Game.hasBuff('Elder frenzy')) {
