@@ -100,7 +100,7 @@ var CookieButler={
           });
       },
 
-      AutoClick:function() {
+      Click:function() {
           // To click
         document.getElementById('bigCookie').dispatchEvent(new MouseEvent('click', {}));
       },
