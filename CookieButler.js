@@ -99,4 +99,9 @@ var CookieButler={
               CookieButler.Stats.Update('pop', shimmer.type, 1);
           });
       },
+
+      AutoClick:function() {
+          // To click
+        document.getElementById('bigCookie').dispatchEvent(new MouseEvent('click', {}));
+      },
   };
