@@ -100,8 +100,90 @@ var CookieButler={
           });
       },
 
-      ClickBigCookie:function() {
-          // To click
-        document.getElementById('bigCookie').dispatchEvent(new MouseEvent('click', {}));
+      
+      ManageClickFrenzy:function() {
+          // Enable autoclicker while `Click frenzy` buff is enabled
+          if (Game.hasBuff('Click frenzy')) {
+            CookieButler.CookieFunctionalities.AutoClicker.Demand('Click_frenzy');
+          } else {
+            CookieButler.CookieFunctionalities.AutoClicker.Retreat('Click_frenzy');
+          }
+      },
+
+      ManageDragonflight:function() {
+        // Enable autoclicker while `Dragonflight` buff is enabled
+        if (Game.hasBuff('Dragonflight')) {
+          CookieButler.CookieFunctionalities.AutoClicker.Demand('Dragonflight');
+        } else {
+          CookieButler.CookieFunctionalities.AutoClicker.Retreat('Dragonflight');
+        }
+      },
+
+      ManageElderFrenzy:function() {
+        // Enable autoclicker while `Dragonflight` buff is enabled
+        if (Game.hasBuff('Elder frenzy')) {
+          CookieButler.CookieFunctionalities.AutoClicker.Demand('Elder_frenzy');
+        } else {
+          CookieButler.CookieFunctionalities.AutoClicker.Retreat('Elder_frenzy');
+        }
+      },
+
+
+      CookieFunctionalities:{
+
+        ClickBigCookie:function() {
+            // Click the big cookie once
+          document.getElementById('bigCookie').dispatchEvent(new MouseEvent('click', {}));
+        },
+
+        AutoClicker:{
+            requests:{'at_least_one_type':0},
+
+            BigCookieClickEvent:null,
+
+            Parameters: {
+                click_frequency:100, // Clicks per second (Hz)
+            },
+
+            Demand:function(demander) {
+                CookieButler.CookieFunctionalities.AutoClicker.requests[demander] = 1;
+                CookieButler.CookieFunctionalities.AutoClicker.SmartStart();
+            },
+
+            Retreat:function(retreater) {
+                CookieButler.CookieFunctionalities.AutoClicker.requests[retreater] = 0;
+                CookieButler.CookieFunctionalities.AutoClicker.SmartStart();
+            },
+
+            SmartStart:function() {
+                // Start the autoclicker only if there is at least one request
+                
+                // Utility function to calculate the total number of requests
+                const count = obj => Object.values(obj).reduce((a, b) => a + b);
+
+                if (count(CookieButler.CookieFunctionalities.AutoClicker.requests) > 0) {
+                    if(CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent === none) {
+                        CookieButler.CookieFunctionalities.AutoClicker.Start();
+                    }
+                } else {
+                    if(!(CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent === none)) {
+                        CookieButler.CookieFunctionalities.AutoClicker.Stop();
+                    }
+                }
+            },
+
+            Start:function() {
+                // Start the autoclicker
+                const clicking_period = 1000/CookieButler.AutoClicker.Parameters.click_frequency; 
+                CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent = window.setInterval(CookieButler.CookieFunctionalities.ClickBigCookie, clicking_period);
+            },
+
+            Stop:function() {
+                // Stop the autoclicker
+                window.clearInterval(CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent);
+                CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent = none;
+            },
+        },
+
       },
   };
