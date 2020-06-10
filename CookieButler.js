@@ -1,118 +1,48 @@
 /*jshint esversion: 6 */
-var CookieButler = {
-    Settings: {
-        ManageWrinklersInterval_ms: 5000,
-        ManageWrinklersInterval: null,
 
-        ManageShimmersInterval_ms: 1000,
-        ManageShimmersInterval: null,
+class ManagerBase {
+    constructor(name, settings, CookieButlerLogger) {
+        // name is the name of the manager
+        this.Name = name;
 
-        ManageClickFrenzyInterval_ms: 1000,
-        ManageClickFrenzyInterval: null,
+        // Settings of the manager
+        this.Settings = settings;
 
-        ManageDragonflightInterval_ms: 1000,
-        ManageDragonflightInterval: null,
+        // Logger in order to communicate with CookieButler
+        this.CBLogger = CookieButlerLogger;
 
-        ManageElderFrenzyInterval_ms: 1000,
-        ManageElderFrenzyInterval: null,
-
-        LoggingLevel: 0, //0:none, 1:all
-
-        DesiredWrinklersNumber: 8,
-    },
-
-    Stats: {
-        Historic: [],
-
-        Update: function(action, type, quantity) {
-            // Save a datapoint in the history
-            CookieButler.Stats.Historic.push({
-                'Time_ms': Date.now(),
-                'action': action,
-                'type': type,
-                'quantity': quantity
-            });
-
-            if (CookieButler.Settings.LoggingLevel > 0) {
-                console.log(action, type, quantity);
-            }
-        },
-
-        Reset: function() {
-            CookieButler.Stats.Historic = {};
-        },
-
-        ToJson: function() {
-            console.log(JSON.stringify(CookieButler.Stats.Historic));
+        // Ensure that the game is loaded
+        if (!window.Game) {
+            console.log('CookieClicker is not loaded!', this.Name, 'might not work properly.');
         }
-    },
+    }
 
-    Activate: function() {
-        CookieButler.Settings.ManageWrinklersInterval = window.setInterval(CookieButler.ManageWrinklers, CookieButler.Settings.ManageWrinklersInterval_ms);
-        CookieButler.Stats.Update('Activated', 'ManageWrinklersInterval', CookieButler.Settings.ManageWrinklersInterval_ms);
-        console.log('Activated', 'ManageWrinklersInterval');
+    Check(){
+        console.log(this.Name, 'has no implemented actions');
+    }
+}
 
-        CookieButler.Settings.ManageShimmersInterval = window.setInterval(CookieButler.ManageShimmers, CookieButler.Settings.ManageShimmersInterval_ms);
-        CookieButler.Stats.Update('Activated', 'ManageShimmersInterval', CookieButler.Settings.ManageShimmersInterval_ms);
-        console.log('Activated', 'ManageShimmersInterval');
+class ShimmersManager extends ManagerBase {
+    constructor(name, settings, CookieButlerLogger) {
+        super(name, settings, CookieButlerLogger);
+    }
+    
+    Check() {
+        // Click golden cookies and reindeers
 
-        CookieButler.Settings.ManageClickFrenzyInterval = window.setInterval(CookieButler.ManageClickFrenzy, CookieButler.Settings.ManageClickFrenzyInterval_ms);
-        CookieButler.Stats.Update('Activated', 'ManageClickFrenzyInterval', CookieButler.Settings.ManageClickFrenzyInterval_ms);
-        console.log('Activated', 'ManageClickFrenzyInterval');
+        // Pop all of them
+        window.Game.shimmers.forEach(function(shimmer) {
+            shimmer.pop();
+            this.CBLogger.Update('pop', shimmer.type, 1);
+        });
+    }
+}
 
-        CookieButler.Settings.ManageDragonflightInterval = window.setInterval(CookieButler.ManageDragonflight, CookieButler.Settings.ManageDragonflightInterval_ms);
-        CookieButler.Stats.Update('Activated', 'ManageDragonflightInterval', CookieButler.Settings.ManageDragonflightInterval_ms);
-        console.log('Activated', 'ManageDragonflightInterval');
 
-        CookieButler.Settings.ManageElderFrenzyInterval = window.setInterval(CookieButler.ManageElderFrenzy, CookieButler.Settings.ManageElderFrenzyInterval_ms);
-        CookieButler.Stats.Update('Activated', 'ManageElderFrenzyInterval', CookieButler.Settings.ManageElderFrenzyInterval_ms);
-        console.log('Activated', 'ManageElderFrenzyInterval');
-    },
+class WrinklersManager extends ManagerBase {
 
-    Deactivate: function() {
-        if (CookieButler.Settings.ManageWrinklersInterval !== null) {
-            window.clearInterval(CookieButler.Settings.ManageWrinklersInterval);
-            CookieButler.Settings.ManageWrinklersInterval = null;
-            CookieButler.Stats.Update('Deactivated', 'ManageWrinklersInterval', 1);
-            console.log('Deactivated', 'ManageWrinklersInterval');
-        }
-
-        if (CookieButler.Settings.ManageShimmersInterval !== null) {
-            window.clearInterval(CookieButler.Settings.ManageShimmersInterval);
-            CookieButler.Settings.ManageShimmersInterval = null;
-            CookieButler.Stats.Update('Deactivated', 'ManageShimmersInterval', 1);
-            console.log('Deactivated', 'ManageShimmersInterval');
-        }
-
-        if (CookieButler.Settings.ManageClickFrenzyInterval !== null) {
-            window.clearInterval(CookieButler.Settings.ManageClickFrenzyInterval);
-            CookieButler.Settings.ManageClickFrenzyInterval = null;
-            CookieButler.Stats.Update('Deactivated', 'ManageClickFrenzyInterval', 1);
-            console.log('Deactivated', 'ManageClickFrenzyInterval');
-        }
-
-        if (CookieButler.Settings.ManageDragonflightInterval !== null) {
-            window.clearInterval(CookieButler.Settings.ManageDragonflightInterval);
-            CookieButler.Settings.ManageDragonflightInterval = null;
-            CookieButler.Stats.Update('Deactivated', 'ManageDragonflightInterval', 1);
-            console.log('Deactivated', 'ManageDragonflightInterval');
-        }
-
-        if (CookieButler.Settings.ManageElderFrenzyInterval !== null) {
-            window.clearInterval(CookieButler.Settings.ManageElderFrenzyInterval);
-            CookieButler.Settings.ManageElderFrenzyInterval = null;
-            CookieButler.Stats.Update('Deactivated', 'ManageElderFrenzyInterval', 1);
-            console.log('Deactivated', 'ManageElderFrenzyInterval');
-        }
-
-    },
-
-    Restart: function() {
-        CookieButler.Deactivate();
-        CookieButler.Activate();
-    },
-
-    ManageWrinklers: function() {
+    Check() {
+        // Manage the number of wrinklers
 
         var shinies = [];
         var non_shines = [];
@@ -127,121 +57,281 @@ var CookieButler = {
                 }
             }
         });
-        CookieButler.Stats.Update('Log', 'shinies', shinies.length);
-        CookieButler.Stats.Update('Log', 'non_shines', non_shines.length);
+
+        // Log
+        this.CBLogger.Update('Log', 'shinies', shinies.length);
+        this.CBLogger.Update('Log', 'non_shines', non_shines.length);
 
         // Check if they are almost the max and ensure one spot free for new wrinklers
         var tot_wrinklers = shinies.length + non_shines.length
-        if (tot_wrinklers >= window.Game.getWrinklersMax() || tot_wrinklers > CookieButler.Settings.DesiredWrinklersNumber) {
+        if (tot_wrinklers >= window.Game.getWrinklersMax() || tot_wrinklers > this.Settings.DesiredWrinklersNumber) {
             // pop 1
             if (non_shines.length > 0) {
-                non_shines[0].hp = 0; //anyone is fine
-                CookieButler.Stats.Update('pop', 'non_shiny_wrinkler', 1);
+                var last = non_shines.pop(); //anyone is fine
+
+                this.CBLogger.Update('pop', 'non_shiny_wrinkler', JSON.stringify(last));
+                last.hp=0;
             } else {
-                shinies[0].hp = 0;
-                CookieButler.Stats.Update('pop', 'shiny_wrinkler', 1);
+                var last = shinies.pop(); //anyone is fine
+
+                this.CBLogger.Update('pop', 'shiny_wrinkler', JSON.stringify(last));
+                last.hp=0;
             }
         }
-    },
+    }
+}
 
-    ManageShimmers: function() {
-        // Pop all of them
-        window.Game.shimmers.forEach(function(shimmer) {
-            shimmer.pop();
-            CookieButler.Stats.Update('pop', shimmer.type, 1);
-        });
-    },
+class AutoClickerChecker extends ManagerBase {
+    constructor(name, settings, CookieButlerLogger, Autoclicker, Buffname) {
+        super(name, settings, CookieButlerLogger);
 
+        this.AutoClicker = Autoclicker;
+        this.BuffName = Buffname;
+    }
 
-    ManageClickFrenzy: function() {
+    Check() {
+        var that = this;
+
         // Enable autoclicker while `Click frenzy` buff is enabled
-        if (window.Game.hasBuff('Click frenzy')) {
-            CookieButler.CookieFunctionalities.AutoClicker.Demand('Click_frenzy');
+        if (window.Game.hasBuff(that.BuffName)) {
+            this.AutoClicker.Demand(this.Name);
         } else {
-            CookieButler.CookieFunctionalities.AutoClicker.Retreat('Click_frenzy');
+            this.AutoClicker.Retreat(this.Name);
         }
-    },
+    }
 
-    ManageDragonflight: function() {
-        // Enable autoclicker while `Dragonflight` buff is enabled
-        if (window.Game.hasBuff('Dragonflight')) {
-            CookieButler.CookieFunctionalities.AutoClicker.Demand('Dragonflight');
+}
+
+class Logger {
+    constructor() {
+        this.Historic = [];
+
+        this.Settings = {
+            LoggingLevel:1,
+        };
+    }
+
+    Update(action, type, quantity) {
+        
+        // Save a datapoint in the history
+        this.Historic.push({
+            'Time_ms': Date.now(),
+            'action': action,
+            'type': type,
+            'quantity': quantity
+        });
+
+        if (this.Settings.LoggingLevel > 0) {
+            console.log(action, type, quantity);
+        }
+    }
+
+    Reset() {
+        this.Historic = {};
+    }
+
+    ToJson() {
+        console.log(JSON.stringify(this.Historic));
+    }
+    
+}
+
+
+class AutoClicker {
+    constructor(CookieButlerLogger) {
+        this.Requests = {
+            'at_least_one_type': 0
+        };
+
+        this.BigCookieClickEventIdentifier = null;
+
+        this.Parameters = {
+            ClickFrequency: 100, // Clicks per second (Hz)
+        }
+
+        this.CBLogger = CookieButlerLogger;
+    }
+
+    ClickBigCookie() {
+        // Click the big cookie once
+        document.getElementById('bigCookie').dispatchEvent(new MouseEvent('click', {}));
+    }
+    
+    Start() {
+        var that = this;
+
+        // Start the autoclicker
+        const clicking_period = 1000 / this.Parameters.ClickFrequency;
+        this.BigCookieClickEventIdentifier = window.setInterval(function(){that.ClickBigCookie()}, clicking_period);
+        this.CBLogger.Update('started', 'Autoclicker', clicking_period);
+    }
+
+    Stop() {
+
+        // Stop the autoclicker
+        window.clearInterval(this.BigCookieClickEventIdentifier);
+        this.BigCookieClickEventIdentifier = null;
+        this.CBLogger.Update('stopped', 'Autoclicker', 1);
+    }
+
+    n_demands() {
+        const count = obj => Object.values(obj).reduce((a, b) => a + b);
+
+        return count(this.Requests);
+    }
+
+    SmartStart() {
+        // Start the autoclicker only if there is at least one request
+        if (this.n_demands() > 0) {
+            if (this.BigCookieClickEventIdentifier === null) {
+                this.Start();
+            }
         } else {
-            CookieButler.CookieFunctionalities.AutoClicker.Retreat('Dragonflight');
+            if (this.BigCookieClickEventIdentifier !== null) {
+                this.Stop();
+            }
         }
-    },
+    }
 
-    ManageElderFrenzy: function() {
-        // Enable autoclicker while `Dragonflight` buff is enabled
-        if (window.Game.hasBuff('Elder frenzy')) {
-            CookieButler.CookieFunctionalities.AutoClicker.Demand('Elder_frenzy');
-        } else {
-            CookieButler.CookieFunctionalities.AutoClicker.Retreat('Elder_frenzy');
-        }
-    },
+    Demand(demander) {
+        this.CBLogger.Update('demanded', demander, 1);
+        this.Requests[demander] = 1;
+        this.SmartStart();
+    }
+
+    Retreat(retreater) {
+        this.CBLogger.Update('retreated', retreater, 1);
+        this.Requests[retreater] = 0;
+        this.SmartStart();
+    }
+
+}
 
 
-    CookieFunctionalities: {
 
-        ClickBigCookie: function() {
-            // Click the big cookie once
-            document.getElementById('bigCookie').dispatchEvent(new MouseEvent('click', {}));
-        },
+class CookieButler {
+    constructor() {
 
-        AutoClicker: {
-            requests: {
-                'at_least_one_type': 0
-            },
+        this.Settings = {};
 
-            BigCookieClickEvent: null,
+        this.Stats = new Logger();
 
-            Parameters: {
-                click_frequency: 100, // Clicks per second (Hz)
-            },
+        this.AutoClickerInstance = new AutoClicker(this.Stats);
 
-            Demand: function(demander) {
-                CookieButler.Stats.Update('demanded', demander, 1);
-                CookieButler.CookieFunctionalities.AutoClicker.requests[demander] = 1;
-                CookieButler.CookieFunctionalities.AutoClicker.SmartStart();
-            },
+        this.Managers = {
+            Wrinklers: new WrinklersManager('wrinklers_manager', {DesiredWrinklersNumber:8, Interval_ms:5000}, this.Stats),
+            Shimmers: new ShimmersManager('shimmers_manager', {Interval_ms:1000}, this.Stats),
+        };
 
-            Retreat: function(retreater) {
-                CookieButler.Stats.Update('retreated', retreater, 1);
-                CookieButler.CookieFunctionalities.AutoClicker.requests[retreater] = 0;
-                CookieButler.CookieFunctionalities.AutoClicker.SmartStart();
-            },
+        this.AutoclickerCheckers = {
+            ClickFrenzy: new AutoClickerChecker('click_frenzy_checker', {Interval_ms:1000}, this.Stats, this.AutoClickerInstance, "Click frenzy"),
+            Dragonflight: new AutoClickerChecker('dragonflight_checker', {Interval_ms:1000}, this.Stats, this.AutoClickerInstance, "Dragonflight"),
+            ElderFrenzy: new AutoClickerChecker('elder_frenzy_checker', {Interval_ms:1000}, this.Stats, this.AutoClickerInstance, "Elder frenzy"),
+        };
+        
+        this.IntervalIdentifiers = {};
 
-            SmartStart: function() {
-                // Start the autoclicker only if there is at least one request
+        // this.Activate();
+    }    
 
-                // Utility function to calculate the total number of requests
-                const count = obj => Object.values(obj).reduce((a, b) => a + b);
+    Activate() {
 
-                if (count(CookieButler.CookieFunctionalities.AutoClicker.requests) > 0) {
-                    if (CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent === null) {
-                        CookieButler.CookieFunctionalities.AutoClicker.Start();
-                    }
-                } else {
-                    if (CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent !== null) {
-                        CookieButler.CookieFunctionalities.AutoClicker.Stop();
-                    }
-                }
-            },
+        var that=this;
 
-            Start: function() {
-                // Start the autoclicker
-                const clicking_period = 1000 / CookieButler.CookieFunctionalities.AutoClicker.Parameters.click_frequency;
-                CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent = window.setInterval(CookieButler.CookieFunctionalities.ClickBigCookie, 100);
-                CookieButler.Stats.Update('started', 'Autoclicker', 1);
-            },
 
-            Stop: function() {
-                // Stop the autoclicker
-                window.clearInterval(CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent);
-                CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent = null;
-                CookieButler.Stats.Update('stopped', 'Autoclicker', 1);
-            },
-        },
+        Object.keys(that.Managers).forEach(function(key){
+            var Manager = that.Managers[key];
 
-    },
+            that.IntervalIdentifiers[key] = window.setInterval(function(){that.Managers[key].Check()}, Manager.Settings.Interval_ms);
+            that.Stats.Update('Activated', key, Manager.Settings.Interval_ms);
+        });
+
+        Object.keys(that.AutoclickerCheckers).forEach(function(key){
+            var Checker = that.AutoclickerCheckers[key];
+
+            that.IntervalIdentifiers[key] = window.setInterval(function(){that.AutoclickerCheckers[key].Check()}, Checker.Settings.Interval_ms);
+            that.Stats.Update('Activated', key, Checker.Settings.Interval_ms);
+        });
+
+
+
+        // this.Settings.ManageWrinklersInterval = window.setInterval(function(){instance.Managers.Wrinklers.Check()}, this.Settings.ManageWrinklersInterval_ms);
+        // this.Stats.Update('Activated', 'ManageWrinklersInterval', this.Settings.ManageWrinklersInterval_ms);
+        // console.log('Activated', 'ManageWrinklersInterval');
+
+        // this.Settings.ManageShimmersInterval = window.setInterval(function(){instance.Managers.Shimmers.Check()}, this.Settings.ManageShimmersInterval_ms);
+        // this.Stats.Update('Activated', 'ManageShimmersInterval', this.Settings.ManageShimmersInterval_ms);
+        // console.log('Activated', 'ManageShimmersInterval');
+
+        // CookieButler.Settings.ManageClickFrenzyInterval = window.setInterval(CookieButler.ManageClickFrenzy, CookieButler.Settings.ManageClickFrenzyInterval_ms);
+        // CookieButler.Stats.Update('Activated', 'ManageClickFrenzyInterval', CookieButler.Settings.ManageClickFrenzyInterval_ms);
+        // console.log('Activated', 'ManageClickFrenzyInterval');
+
+        // CookieButler.Settings.ManageDragonflightInterval = window.setInterval(CookieButler.ManageDragonflight, CookieButler.Settings.ManageDragonflightInterval_ms);
+        // CookieButler.Stats.Update('Activated', 'ManageDragonflightInterval', CookieButler.Settings.ManageDragonflightInterval_ms);
+        // console.log('Activated', 'ManageDragonflightInterval');
+
+        // CookieButler.Settings.ManageElderFrenzyInterval = window.setInterval(CookieButler.ManageElderFrenzy, CookieButler.Settings.ManageElderFrenzyInterval_ms);
+        // CookieButler.Stats.Update('Activated', 'ManageElderFrenzyInterval', CookieButler.Settings.ManageElderFrenzyInterval_ms);
+        // console.log('Activated', 'ManageElderFrenzyInterval');
+    }
+
+    Deactivate() {
+        var that=this;
+
+        Object.keys(this.IntervalIdentifiers).forEach(function(key){
+            var Identifier = that.IntervalIdentifiers[key];
+
+            if (Identifier !== null) {
+                window.clearInterval(Identifier);
+                that.IntervalIdentifiers[key] = null;
+                that.Stats.Update('Deactivated', key, that.IntervalIdentifiers[key]);
+            }
+            
+        });
+
+
+        // if (this.Settings.ManageWrinklersInterval !== null) {
+        //     window.clearInterval(this.Settings.ManageWrinklersInterval);
+        //     this.Settings.ManageWrinklersInterval = null;
+        //     this.Stats.Update('Deactivated', 'ManageWrinklersInterval', 1);
+        //     console.log('Deactivated', 'ManageWrinklersInterval');
+        // }
+
+        // if (CookieButler.Settings.ManageShimmersInterval !== null) {
+        //     window.clearInterval(this.Settings.ManageShimmersInterval);
+        //     this.Settings.ManageShimmersInterval = null;
+        //     this.Stats.Update('Deactivated', 'ManageShimmersInterval', 1);
+        //     console.log('Deactivated', 'ManageShimmersInterval');
+        // }
+
+        // if (CookieButler.Settings.ManageClickFrenzyInterval !== null) {
+        //     window.clearInterval(CookieButler.Settings.ManageClickFrenzyInterval);
+        //     CookieButler.Settings.ManageClickFrenzyInterval = null;
+        //     CookieButler.Stats.Update('Deactivated', 'ManageClickFrenzyInterval', 1);
+        //     console.log('Deactivated', 'ManageClickFrenzyInterval');
+        // }
+
+        // if (CookieButler.Settings.ManageDragonflightInterval !== null) {
+        //     window.clearInterval(CookieButler.Settings.ManageDragonflightInterval);
+        //     CookieButler.Settings.ManageDragonflightInterval = null;
+        //     CookieButler.Stats.Update('Deactivated', 'ManageDragonflightInterval', 1);
+        //     console.log('Deactivated', 'ManageDragonflightInterval');
+        // }
+
+        // if (CookieButler.Settings.ManageElderFrenzyInterval !== null) {
+        //     window.clearInterval(CookieButler.Settings.ManageElderFrenzyInterval);
+        //     CookieButler.Settings.ManageElderFrenzyInterval = null;
+        //     CookieButler.Stats.Update('Deactivated', 'ManageElderFrenzyInterval', 1);
+        //     console.log('Deactivated', 'ManageElderFrenzyInterval');
+        // }
+
+    }
+
+    Restart() {
+        this.Deactivate();
+        this.Activate();
+    }
 };
+
+CB = new CookieButler();
