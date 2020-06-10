@@ -7,10 +7,18 @@ This mod has been developed on Firefox with CookieClicker 2.022. Feel free to te
 
 # How to use
 The current way I use this is by:
-1. Create a bookmarklet with the code `javascript:(function() { Game.LoadMod('https://iacosite.github.io/cookie_butler/CookieButler.js'); }());`
+1. Create a bookmarklet with the code 
+
+```javascript
+javascript:(function() { Game.LoadMod('https://iacosite.github.io/cookie_butler/CookieButler.js'); }());
+```
+
 2. Control CookieButler by typing in your console: (The mod is not activated by default)
     * `CookieButler.Activate()`
     * `CookieButler.Deactivate()`
     * `CookieButler.Restart()` 
 
 In case you want to change the mod settings, just edit the variable `CookieButler.Settings` and restart the mod with `CookieButler.Restart()` 
+
+# Sponsor
+If you liked CookieButler and would like to contibute, either get involved or buy me a beer! -> [:beer:](https://www.paypal.me/iacosite/10USD) (or a coffee [:coffee:](https://www.paypal.me/iacosite/5USD)).

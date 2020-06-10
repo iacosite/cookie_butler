@@ -110,17 +110,19 @@ var CookieButler = {
         CookieButler.Activate();
     },
 
-    ManageWrinklers: function() {
-
+    ManageWrinklers:function() {
+  
         var shinies = [];
         var non_shines = [];
 
         // Divide wrinklers in shiny and not shiny
         window.Game.wrinklers.forEach(function(wrinkler) {
-            if (wrinkler.type == 1) {
-                shinies.push(wrinkler);
-            } else {
-                non_shines.push(wrinkler);
+            if (wrinkler.close == 1) {
+              if (wrinkler.type == 1) {
+                  shinies.push(wrinkler);
+              } else {
+                  non_shines.push(wrinkler);
+              }
             }
         });
         CookieButler.Stats.Update('Log', 'shinies', shinies.length);
@@ -242,3 +244,4 @@ var CookieButler = {
 
     },
 };
+  
