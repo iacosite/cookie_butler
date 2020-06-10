@@ -13,7 +13,7 @@ The current way I use this is by:
 javascript:(function() { Game.LoadMod('https://iacosite.github.io/cookie_butler/CookieButler.js'); }());
 ```
 
-2. Control CookieButler by typing in your console: (The mod is not activated by default)
+2. Control CookieButler by typing in your console: (The mod is activated by default)
     * `CookieButler.Activate()`
     * `CookieButler.Deactivate()`
     * `CookieButler.Restart()` 
