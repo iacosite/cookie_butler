@@ -54,15 +54,15 @@ var CookieButler = {
         CookieButler.Stats.Update('Activated', 'ManageShimmersInterval', CookieButler.Settings.ManageShimmersInterval_ms);
         console.log('Activated', 'ManageShimmersInterval');
 
-        CookieButler.Settings.ManageClickFrenzyInterval = window.setInterval(CookieButler.ManageShimmers, CookieButler.Settings.ManageClickFrenzyInterval_ms);
+        CookieButler.Settings.ManageClickFrenzyInterval = window.setInterval(CookieButler.ManageClickFrenzy, CookieButler.Settings.ManageClickFrenzyInterval_ms);
         CookieButler.Stats.Update('Activated', 'ManageClickFrenzyInterval', CookieButler.Settings.ManageClickFrenzyInterval_ms);
         console.log('Activated', 'ManageClickFrenzyInterval');
 
-        CookieButler.Settings.ManageDragonflightInterval = window.setInterval(CookieButler.ManageShimmers, CookieButler.Settings.ManageDragonflightInterval_ms);
+        CookieButler.Settings.ManageDragonflightInterval = window.setInterval(CookieButler.ManageDragonflight, CookieButler.Settings.ManageDragonflightInterval_ms);
         CookieButler.Stats.Update('Activated', 'ManageDragonflightInterval', CookieButler.Settings.ManageDragonflightInterval_ms);
         console.log('Activated', 'ManageDragonflightInterval');
 
-        CookieButler.Settings.ManageElderFrenzyInterval = window.setInterval(CookieButler.ManageShimmers, CookieButler.Settings.ManageElderFrenzyInterval_ms);
+        CookieButler.Settings.ManageElderFrenzyInterval = window.setInterval(CookieButler.ManageElderFrenzy, CookieButler.Settings.ManageElderFrenzyInterval_ms);
         CookieButler.Stats.Update('Activated', 'ManageElderFrenzyInterval', CookieButler.Settings.ManageElderFrenzyInterval_ms);
         console.log('Activated', 'ManageElderFrenzyInterval');
     },
@@ -228,14 +228,13 @@ var CookieButler = {
             Start: function() {
                 // Start the autoclicker
                 const clicking_period = 1000 / CookieButler.CookieFunctionalities.AutoClicker.Parameters.click_frequency;
-                // CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent = window.setInterval(CookieButler.CookieFunctionalities.ClickBigCookie, clicking_period);
-                CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent = 1;
+                CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent = window.setInterval(CookieButler.CookieFunctionalities.ClickBigCookie, 100);
                 console.log('Autoclicker started!');
             },
 
             Stop: function() {
                 // Stop the autoclicker
-                // window.clearInterval(CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent);
+                window.clearInterval(CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent);
                 CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent = null;
                 console.log('Autoclicker stopped!');
             },
