@@ -197,15 +197,13 @@ var CookieButler = {
             },
 
             Demand: function(demander) {
-
-                console.log('demanded', demander);
+                CookieButler.Stats.Update('demanded', demander, 1);
                 CookieButler.CookieFunctionalities.AutoClicker.requests[demander] = 1;
                 CookieButler.CookieFunctionalities.AutoClicker.SmartStart();
             },
 
             Retreat: function(retreater) {
-                console.log('retreated', retreater);
-
+                CookieButler.Stats.Update('retreated', retreater, 1);
                 CookieButler.CookieFunctionalities.AutoClicker.requests[retreater] = 0;
                 CookieButler.CookieFunctionalities.AutoClicker.SmartStart();
             },
@@ -231,14 +229,14 @@ var CookieButler = {
                 // Start the autoclicker
                 const clicking_period = 1000 / CookieButler.CookieFunctionalities.AutoClicker.Parameters.click_frequency;
                 CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent = window.setInterval(CookieButler.CookieFunctionalities.ClickBigCookie, 100);
-                console.log('Autoclicker started!');
+                CookieButler.Stats.Update('started', 'Autoclicker', 1);
             },
 
             Stop: function() {
                 // Stop the autoclicker
                 window.clearInterval(CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent);
                 CookieButler.CookieFunctionalities.AutoClicker.BigCookieClickEvent = null;
-                console.log('Autoclicker stopped!');
+                CookieButler.Stats.Update('stopped', 'Autoclicker', 1);
             },
         },
 
