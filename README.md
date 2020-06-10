@@ -1,7 +1,11 @@
 # CookieButler
 This CookieClicker mod has two main functionalities:
 1. Automatically click all the golden cookies in the screen (Golden/Wrath cookies and Reindeers)
-2. Keep the number of wrinklers to Game.getWrinklersMax-1 by popping them. Pops normal wrinkles first and only pops shiny ones when there are Game.getWrinklersMax of them.
+2. Keep the number of wrinklers to either `Game.getWrinklersMax-1` or to an used defined number by popping them. Pops normal wrinkles first and only pops shiny ones when there are `Game.getWrinklersMax` of them.
+3. Enable and disable an autoclicker when the following buffs are active:
+   * Click Frenzy
+   * Elder Frenzy
+   * Dragonflight
 
 This mod has been developed on Firefox with CookieClicker 2.022. Feel free to test it with different browse/game version combinations and report if it works!
 
