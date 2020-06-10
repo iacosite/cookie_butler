@@ -267,7 +267,7 @@ class CookieButler {
 
     this.IntervalIdentifiers = {};
 
-    // this.Activate();
+    this.Activate();
   }
 
   Activate() {
