@@ -17,6 +17,8 @@ var CookieButler = {
         ManageElderFrenzyInterval: null,
 
         LoggingLevel: 0, //0:none, 1:all
+
+        DesiredWrinklersNumber: 8,
     },
 
     Stats: {
@@ -129,7 +131,8 @@ var CookieButler = {
         CookieButler.Stats.Update('Log', 'non_shines', non_shines.length);
 
         // Check if they are almost the max and ensure one spot free for new wrinklers
-        if ((shinies.length + non_shines.length) >= window.Game.getWrinklersMax()) {
+        var tot_wrinklers = shinies.length + non_shines.length
+        if (tot_wrinklers >= window.Game.getWrinklersMax() || tot_wrinklers > CookieButler.Settings.DesiredWrinklersNumber) {
             // pop 1
             if (non_shines.length > 0) {
                 non_shines[0].hp = 0; //anyone is fine
