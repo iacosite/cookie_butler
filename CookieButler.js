@@ -1,11 +1,20 @@
 /*jshint esversion: 6 */
-class ManagerBase {
-  constructor(name, settings, CookieButlerLogger) {
-    // name is the name of the manager
-    this.Name = name;
 
+//TODO: Improve ManagerBase to add setInterval and clearInterval. Pass the interval in the constructor and add to the settings
+
+class ManagerBase {
+  constructor(name, settings, interval_ms, CookieButlerLogger) {
     // Settings of the manager
     this.Settings = settings;
+    this.Settings.Interval_ms = interval_ms;
+
+    // Status
+    this.Status = {
+      Name: name,
+      Active: false,
+      GameFound: false,
+      IntervalIdentifier: null,
+    };
 
     // Logger in order to communicate with CookieButler
     this.CBLogger = CookieButlerLogger;
@@ -14,37 +23,114 @@ class ManagerBase {
     if (!window.Game) {
       console.log(
         "CookieClicker is not loaded!",
-        this.Name,
+        this.Status.Name,
         "might not work properly."
       );
+    } else {
+      this.Status.GameFound = true;
     }
 
     // Augment array
-    if (Array.pop_random === undefined) {
-      Array.pop_random = function () {
-        // select the random element and remove it from array
-        let elem = this.splice(Math.floor(Math.random() * this.length), 1);
+    if (Array.prototype.pop_random === undefined) {
+      Object.defineProperty(Array.prototype, "pop_random", {
+        value: function () {
+          // select the random element and remove it from array
+          let elem = this.splice(Math.floor(Math.random() * this.length), 1);
 
-        // return undefined if no element is popped (the array is empty) emulating Array.pop()
-        if (elem.length == 0) {
-          return undefined;
-        } else {
-          return elem[0];
-        }
-      };
+          // return undefined if no element is popped (the array is empty) emulating Array.pop()
+          if (elem.length == 0) {
+            return undefined;
+          } else {
+            return elem[0];
+          }
+        },
+      });
     }
   }
 
   Check() {
-    console.log(this.Name, "has no implemented actions");
+    console.log(this.Status.Name, "has no implemented actions");
+  }
+
+  Activate() {
+    if (!this.Status.Active) {
+      if (this.Status.IntervalIdentifier === null) {
+        let that = this;
+        this.Status.IntervalIdentifier = window.setInterval(function () {
+          that.Check();
+        }, that.Settings.Interval_ms);
+
+        this.CBLogger.Update(
+          this.Status.Name + "::Activate",
+          "Activated",
+          this.Status.IntervalIdentifier
+        );
+        this.Status.Active = true;
+      } else {
+        // this is a bug
+        this.CBLogger.Update(
+          this.Status.Name + "::Activate",
+          "this.Status.IntervalIdentifier not null, bug!",
+          this.Status.IntervalIdentifier
+        );
+
+        // try to recover
+        this.Deactivate();
+      }
+    } else {
+      this.CBLogger.Update(
+        this.Status.Name + "::Activate",
+        "Already active!",
+        this.Status.Active
+      );
+    }
+    return this.Status.Active;
+  }
+
+  Deactivate() {
+    if (this.Status.Active) {
+      if (this.Status.IntervalIdentifier === null) {
+        // this is a bug
+        this.CBLogger.Update(
+          this.Status.Name + "::Deactivate",
+          "this.Status.IntervalIdentifier null, bug!",
+          this.Status.IntervalIdentifier
+        );
+
+        // try to recover
+        this.Status.Active = false;
+        return false;
+      } else {
+        let that = this;
+        window.clearInterval(that.Status.IntervalIdentifier);
+        this.Status.IntervalIdentifier = null;
+        this.Status.Active = false;
+
+        this.CBLogger.Update(
+          this.Status.Name + "::Deactivate",
+          "Deactivated",
+          this.Status.Active
+        );
+      }
+    } else {
+      this.CBLogger.Update(
+        this.Status.Name + "::Deactivate",
+        "Already inactive!",
+        this.Status.Active
+      );
+    }
+    return !this.Status.Active;
+  }
+
+  Restart() {
+    this.Deactivate();
+    this.Activate();
+
+    return this.Status.Active;
   }
 }
 
 class ShimmersManager extends ManagerBase {
-  constructor(name, settings, CookieButlerLogger) {
-    super(name, settings, CookieButlerLogger);
-  }
-
   Check() {
     // Click golden cookies and reindeers
     // Pop all of them
@@ -120,21 +206,28 @@ class WrinklersManager extends ManagerBase {
 }
 
 class AutoClickerChecker extends ManagerBase {
-  constructor(name, settings, CookieButlerLogger, Autoclicker, Buffname) {
-    super(name, settings, CookieButlerLogger);
+  constructor(
+    name,
+    settings,
+    interval_ms,
+    CookieButlerLogger,
+    Autoclicker,
+    Buffname
+  ) {
+    super(name, settings, interval_ms, CookieButlerLogger);
 
     this.AutoClicker = Autoclicker;
-    this.BuffName = Buffname;
+    this.Settings.BuffName = Buffname;
   }
 
   Check() {
     let that = this;
 
     // Enable autoclicker while `Click frenzy` buff is enabled
-    if (window.Game.hasBuff(that.BuffName)) {
-      this.AutoClicker.Demand(this.Name);
+    if (window.Game.hasBuff(that.Settings.BuffName)) {
+      this.AutoClicker.Demand(this.Status.Name);
     } else {
-      this.AutoClicker.Retreat(this.Name);
+      this.AutoClicker.Retreat(this.Status.Name);
     }
   }
 }
@@ -259,44 +352,35 @@ class CookieButler {
         "wrinklers_manager",
         {
           DesiredWrinklersNumber: this.Settings.DefaultWrinklersNumber,
-          Interval_ms: 5000,
           PopShinyWrinklers: false,
         },
+        5000,
         this.Stats
       ),
-      Shimmers: new ShimmersManager(
-        "shimmers_manager",
-        {
-          Interval_ms: 1000,
-        },
-        this.Stats
-      ),
+      Shimmers: new ShimmersManager("shimmers_manager", {}, 1000, this.Stats),
     };
 
     this.AutoclickerCheckers = {
       ClickFrenzy: new AutoClickerChecker(
         "click_frenzy_checker",
-        {
-          Interval_ms: 1000,
-        },
+        {},
+        1000,
         this.Stats,
         this.AutoClickerInstance,
         "Click frenzy"
       ),
       Dragonflight: new AutoClickerChecker(
         "dragonflight_checker",
-        {
-          Interval_ms: 1000,
-        },
+        {},
+        1000,
         this.Stats,
         this.AutoClickerInstance,
         "Dragonflight"
       ),
       ElderFrenzy: new AutoClickerChecker(
         "elder_frenzy_checker",
-        {
-          Interval_ms: 1000,
-        },
+        {},
+        1000,
         this.Stats,
         this.AutoClickerInstance,
         "Elder frenzy"
@@ -309,34 +393,99 @@ class CookieButler {
   }
 
   Activate() {
-    let that = this;
-    Object.keys(this.Managers).forEach(function (key) {
-      let Manager = this.Managers[key];
+    // Activate all the Managers
+    Object.entries(this.Managers).forEach(([name, manager]) => {
+      if (manager.Activate()) {
+        this.Stats.Update("Activated", name, manager.Status);
+      } else {
+        this.Stats.Update(
+          "Activated",
+          "Failed to activate " + name + ", restarting",
+          manager.Status
+        );
 
-      this.IntervalIdentifiers[key] = window.setInterval(function () {
-        that.Managers[key].Check();
-      }, Manager.Settings.Interval_ms);
-      this.Stats.Update("Activated", key, Manager.Settings.Interval_ms);
+        if (!manager.Restart()) {
+          this.Stats.Update(
+            "Activated",
+            "Failed to restart " + name,
+            manager.Status
+          );
+        } else {
+          this.Stats.Update("Activated", name, manager.Status);
+        }
+      }
     }, this);
 
-    Object.keys(this.AutoclickerCheckers).forEach(function (key) {
-      let Checker = this.AutoclickerCheckers[key];
+    // Activate all the AutoclickerCheckers
+    Object.entries(this.AutoclickerCheckers).forEach(([name, checker]) => {
+      if (checker.Activate()) {
+        this.Stats.Update("Activated", name, checker.Status);
+      } else {
+        this.Stats.Update(
+          "Activated",
+          "Failed to activate " + name + ", restarting",
+          checker.Status
+        );
 
-      this.IntervalIdentifiers[key] = window.setInterval(function () {
-        that.AutoclickerCheckers[key].Check();
-      }, Checker.Settings.Interval_ms);
-      this.Stats.Update("Activated", key, Checker.Settings.Interval_ms);
+        if (!checker.Restart()) {
+          this.Stats.Update(
+            "Activated",
+            "Failed to restart " + name,
+            checker.Status
+          );
+        } else {
+          this.Stats.Update("Activated", name, checker.Status);
+        }
+      }
     }, this);
   }
 
   Deactivate() {
-    Object.keys(this.IntervalIdentifiers).forEach(function (key) {
-      let Identifier = this.IntervalIdentifiers[key];
+    // Deactivate all the Managers
+    Object.entries(this.Managers).forEach(([name, manager]) => {
+      if (manager.Deactivate()) {
+        this.Stats.Update("Deactivated", name, manager.Status);
+      } else {
+        // There has been an error, retry
+        this.Stats.Update(
+          "Deactivated",
+          "Failed to deactivate " + name + ", retrying",
+          manager.Status
+        );
 
-      if (Identifier !== null) {
-        window.clearInterval(Identifier);
-        this.IntervalIdentifiers[key] = null;
-        this.Stats.Update("Deactivated", key, this.IntervalIdentifiers[key]);
+        if (!manager.Deactivate()) {
+          this.Stats.Update(
+            "Deactivated",
+            "Failed to retry deactivate " + name,
+            manager.Status
+          );
+        } else {
+          this.Stats.Update("Deactivated", name, manager.Status);
+        }
+      }
+    }, this);
+
+    // Deactivate all the AutoclickerCheckers
+    Object.entries(this.AutoclickerCheckers).forEach(([name, checker]) => {
+      if (checker.Deactivate()) {
+        this.Stats.Update("Deactivated", name, checker.Status);
+      } else {
+        // There has been an error, retry
+        this.Stats.Update(
+          "Deactivated",
+          "Failed to deactivate " + name + ", retrying",
+          checker.Status
+        );
+
+        if (!checker.Deactivate()) {
+          this.Stats.Update(
+            "Deactivated",
+            "Failed to retry deactivate " + name,
+            checker.Status
+          );
+        } else {
+          this.Stats.Update("Deactivated", name, checker.Status);
+        }
       }
     }, this);
   }
