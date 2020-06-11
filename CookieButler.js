@@ -18,6 +18,21 @@ class ManagerBase {
         "might not work properly."
       );
     }
+
+    // Augment array
+    if (Array.pop_random === undefined) {
+      Array.pop_random = function () {
+        // select the random element and remove it from array
+        let elem = this.splice(Math.floor(Math.random() * this.length), 1);
+
+        // return undefined if no element is popped (the array is empty) emulating Array.pop()
+        if (elem.length == 0) {
+          return undefined;
+        } else {
+          return elem[0];
+        }
+      };
+    }
   }
 
   Check() {
@@ -64,21 +79,41 @@ class WrinklersManager extends ManagerBase {
 
     // Check if they are almost the max and ensure one spot free for new wrinklers
     let tot_wrinklers = shinies.length + non_shines.length;
-    if (
-      tot_wrinklers >= window.Game.getWrinklersMax() ||
-      tot_wrinklers > this.Settings.DesiredWrinklersNumber
-    ) {
-      // pop 1
-      if (non_shines.length > 0) {
-        let last = non_shines.pop(); //anyone is fine
+    let desired_n_wrinklers = Math.min(
+      window.Game.getWrinklersMax(),
+      this.Settings.DesiredWrinklersNumber
+    );
 
-        this.CBLogger.Update("pop", "non_shiny_wrinkler", JSON.stringify(last));
-        last.hp = 0;
-      } else {
-        let last = shinies.pop(); //anyone is fine
+    let wrinklers_to_pop = tot_wrinklers - desired_n_wrinklers;
+    if (wrinklers_to_pop > 0) {
+      // Pop normal wrinklers first
+      while (wrinklers_to_pop > 0 && non_shines.length > 0) {
+        let wrinkler_to_pop = non_shines.pop_random();
+        this.CBLogger.Update(
+          "pop",
+          "non_shiny_wrinkler",
+          JSON.stringify(wrinkler_to_pop)
+        );
+        wrinkler_to_pop.hp = 0;
 
-        this.CBLogger.Update("pop", "shiny_wrinkler", JSON.stringify(last));
-        last.hp = 0;
+        wrinklers_to_pop--;
+      }
+
+      // Then pop shiny in case we want
+      if (this.Settings.PopShinyWrinklers) {
+        // Pop normal wrinklers first
+        while (wrinklers_to_pop > 0 && shinies.length > 0) {
+          let wrinkler_to_pop = shinies.pop_random();
+
+          this.CBLogger.Update(
+            "pop",
+            "shiny_wrinkler",
+            JSON.stringify(wrinkler_to_pop)
+          );
+          wrinkler_to_pop.hp = 0;
+
+          wrinklers_to_pop--;
+        }
       }
     }
   }
@@ -225,6 +260,7 @@ class CookieButler {
         {
           DesiredWrinklersNumber: this.Settings.DefaultWrinklersNumber,
           Interval_ms: 5000,
+          PopShinyWrinklers: false,
         },
         this.Stats
       ),
