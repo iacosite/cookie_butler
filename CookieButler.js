@@ -357,7 +357,7 @@ class CookieButler {
         5000,
         this.Stats
       ),
-      Shimmers: new ShimmersManager("shimmers_manager", {}, 1000, this.Stats),
+      Shimmers: new ShimmersManager("shimmers_manager", {}, 800, this.Stats),
     };
 
     this.AutoclickerCheckers = {
