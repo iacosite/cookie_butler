@@ -32,12 +32,11 @@ class ShimmersManager extends ManagerBase {
 
   Check() {
     // Click golden cookies and reindeers
-
     // Pop all of them
     window.Game.shimmers.forEach(function (shimmer) {
       shimmer.pop();
       this.CBLogger.Update("pop", shimmer.type, 1);
-    });
+    }, this);
   }
 }
 
@@ -57,7 +56,7 @@ class WrinklersManager extends ManagerBase {
           non_shines.push(wrinkler);
         }
       }
-    });
+    }, this);
 
     // Log
     this.CBLogger.Update("Log", "shinies", shinies.length);
@@ -275,38 +274,35 @@ class CookieButler {
 
   Activate() {
     let that = this;
+    Object.keys(this.Managers).forEach(function (key) {
+      let Manager = this.Managers[key];
 
-    Object.keys(that.Managers).forEach(function (key) {
-      let Manager = that.Managers[key];
-
-      that.IntervalIdentifiers[key] = window.setInterval(function () {
+      this.IntervalIdentifiers[key] = window.setInterval(function () {
         that.Managers[key].Check();
       }, Manager.Settings.Interval_ms);
-      that.Stats.Update("Activated", key, Manager.Settings.Interval_ms);
-    });
+      this.Stats.Update("Activated", key, Manager.Settings.Interval_ms);
+    }, this);
 
-    Object.keys(that.AutoclickerCheckers).forEach(function (key) {
-      let Checker = that.AutoclickerCheckers[key];
+    Object.keys(this.AutoclickerCheckers).forEach(function (key) {
+      let Checker = this.AutoclickerCheckers[key];
 
-      that.IntervalIdentifiers[key] = window.setInterval(function () {
+      this.IntervalIdentifiers[key] = window.setInterval(function () {
         that.AutoclickerCheckers[key].Check();
       }, Checker.Settings.Interval_ms);
-      that.Stats.Update("Activated", key, Checker.Settings.Interval_ms);
-    });
+      this.Stats.Update("Activated", key, Checker.Settings.Interval_ms);
+    }, this);
   }
 
   Deactivate() {
-    let that = this;
-
     Object.keys(this.IntervalIdentifiers).forEach(function (key) {
-      let Identifier = that.IntervalIdentifiers[key];
+      let Identifier = this.IntervalIdentifiers[key];
 
       if (Identifier !== null) {
         window.clearInterval(Identifier);
-        that.IntervalIdentifiers[key] = null;
-        that.Stats.Update("Deactivated", key, that.IntervalIdentifiers[key]);
+        this.IntervalIdentifiers[key] = null;
+        this.Stats.Update("Deactivated", key, this.IntervalIdentifiers[key]);
       }
-    });
+    }, this);
   }
 
   Restart() {
