@@ -106,11 +106,11 @@ class AutoClickerChecker extends ManagerBase {
 }
 
 class Logger {
-  constructor() {
+  constructor(Logginglevel) {
     this.Historic = [];
 
     this.Settings = {
-      LoggingLevel: 1,
+      LoggingLevel: Logginglevel,
     };
   }
 
@@ -213,9 +213,10 @@ class CookieButler {
   constructor() {
     this.Settings = {
       DefaultWrinklersNumber: 8,
+      DefaultLoggingLevel: 0,
     };
 
-    this.Stats = new Logger();
+    this.Stats = new Logger(this.Settings.DefaultLoggingLevel);
 
     this.AutoClickerInstance = new AutoClicker(this.Stats);
 
