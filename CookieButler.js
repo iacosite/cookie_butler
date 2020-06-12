@@ -1,7 +1,4 @@
 /*jshint esversion: 6 */
-
-//TODO: Improve ManagerBase to add setInterval and clearInterval. Pass the interval in the constructor and add to the settings
-
 class ManagerBase {
   constructor(name, settings, interval_ms, CookieButlerLogger) {
     // Settings of the manager
