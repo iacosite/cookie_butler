@@ -771,6 +771,8 @@ class CookieButler {
     this.IntervalIdentifiers = {};
 
     this.Activate();
+
+    coneole("Thank you for using CookieButler!");
   }
 
   Activate() {
