@@ -5,15 +5,15 @@ CookieButler is a mod for CookieClicker which aims at automating the most common
 CookieButler has been developed on Firefox with CookieClicker 2.022. I tested it on Chrome and it seems to work too!
 Feel free to test it with different browser/game version combinations and let me know if it works!
 
-## Automatic Golden cookie clicker
+## Golden cookie manager
 Automatically click all the Golden/Wrath cookies and Reindeers in the screen.
 
-## Automatic Wriklers clicker
+## Wriklers manager
 Keep the number of wrinklers to either `Game.getWrinklersMax()-1` or `CM.Managers.Wrinklers.Settings.DesiredWrinklersNumber` (whichever is lower) by popping them. 
 
 Pops normal wrinkles first and only pops shiny ones when they are the only present.
 
-## Automatic autoclicker
+## Smart Autoclicker
 Enable and disable an autoclicker when the following buffs are active:
    * Click Frenzy
    * Elder Frenzy
