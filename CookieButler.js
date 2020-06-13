@@ -647,7 +647,7 @@ class AutoClicker {
 
     this.BigCookieClickEventIdentifier = null;
 
-    this.Parameters = {
+    this.Settings = {
       ClickFrequency: 100, // Clicks per second (Hz)
     };
 
@@ -663,7 +663,7 @@ class AutoClicker {
     let that = this;
 
     // Start the autoclicker
-    const clicking_period = 1000 / this.Parameters.ClickFrequency;
+    const clicking_period = 1000 / this.Settings.ClickFrequency;
     this.BigCookieClickEventIdentifier = window.setInterval(function () {
       that.ClickBigCookie();
     }, clicking_period);
