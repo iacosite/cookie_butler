@@ -57,8 +57,8 @@ javascript:(function() { Game.LoadMod('https://iacosite.github.io/cookie_butler/
 
 In case you want to change the some settings, just edit them in `CB.Managers['the_one_you_want'].Settings` using the browser console and restart the manager with `CB.Managers['the_one_you_want'].Restart()` 
 
-# Sponsor
-If you liked CookieButler and would like to contibute, either get involved or buy me a beer! -> [:beer:](https://www.paypal.me/iacosite/10USD) (or a coffee [:coffee:](https://www.paypal.me/iacosite/5USD)).
+# Sponsor [:beer:](https://www.paypal.me/iacosite/10USD)
+If you liked CookieButler and would like to contibute, either get involved or buy me a beer! -> [:beer:](https://www.paypal.me/iacosite/10USD)   (or a coffee [:coffee:](https://www.paypal.me/iacosite/5USD)   ).
 
 You can also give some suggestions (just open an issue) and star this project to give it visibility!
 Enjoy! :)
