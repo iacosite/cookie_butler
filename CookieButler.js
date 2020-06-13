@@ -772,7 +772,8 @@ class CookieButler {
 
     this.Activate();
 
-    coneole("Thank you for using CookieButler!");
+    console.log("Thank you for using CookieButler! Visit the homepage at:");
+    console.log("https://github.com/iacosite/cookie_butler");
   }
 
   Activate() {
