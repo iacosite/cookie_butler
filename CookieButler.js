@@ -380,7 +380,7 @@ class GrimoireManager extends ManagerBase {
       game_frames_needed++;
     }
 
-    return game_frames_needed / window.Game.fps / 1000;
+    return (game_frames_needed / window.Game.fps) * 1000;
   }
 
   SimulateSpell(spell) {
