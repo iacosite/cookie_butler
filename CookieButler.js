@@ -667,11 +667,7 @@ class AutoClicker {
     this.BigCookieClickEventIdentifier = window.setInterval(function () {
       that.ClickBigCookie();
     }, clicking_period);
-    this.CBLogger.Update(
-      this.Status.Name + "::Start",
-      clicking_period,
-      this.Requests
-    );
+    this.CBLogger.Update("Autoclicker::Start", clicking_period, this.Requests);
   }
 
   Stop() {
@@ -679,7 +675,7 @@ class AutoClicker {
     window.clearInterval(this.BigCookieClickEventIdentifier);
     this.BigCookieClickEventIdentifier = null;
     this.CBLogger.Update(
-      this.Status.Name + "::Stop",
+      "Autoclicker::Stop",
       this.BigCookieClickEventIdentifier,
       this.Requests
     );
