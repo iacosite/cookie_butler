@@ -23,17 +23,15 @@ class CBDOMUtilities {
 }
 
 class ManagerBase {
-  constructor(name, settings, interval_ms, CookieButlerLogger) {
+  constructor(name, settings, CookieButlerLogger) {
     // Settings of the manager
     this.Settings = settings;
-    this.Settings.Interval_ms = interval_ms;
 
     // Status
     this.Status = {
       Name: name,
       Active: false,
       GameFound: false,
-      IntervalIdentifier: null,
     };
 
     // Logger in order to communicate with CookieButler
@@ -69,7 +67,29 @@ class ManagerBase {
   }
 
   Check() {
-    console.log(this.Status.Name, "has no implemented actions");
+    console.log(this.Status.Name, "Didn' implement Check()");
+  }
+
+  Activate() {
+    console.log(this.Status.Name, "Didn' implement Activate()");
+  }
+
+  Deactivate() {
+    console.log(this.Status.Name, "Didn' implement Deactivate()");
+  }
+
+  Restart() {
+    console.log(this.Status.Name, "Didn' implement Restart()");
+  }
+}
+
+class RepeatingManager extends ManagerBase {
+  constructor(name, settings, interval_ms, CookieButlerLogger) {
+    super(name, settings, CookieButlerLogger);
+
+    this.Settings.Interval_ms = interval_ms;
+
+    this.Status.IntervalIdentifier = null;
   }
 
   Activate() {
@@ -87,39 +107,93 @@ class ManagerBase {
         );
         this.Status.Active = true;
       } else {
-        // this is a bug
+        // This is a bug
         this.CBLogger.Update(
           this.Status.Name + "::Activate",
-          "this.Status.IntervalIdentifier not null, bug!",
+          "Bug! this.Status.IntervalIdentifier not null, but manager is set non active! Trying to recover",
           this.Status.IntervalIdentifier
         );
 
-        // try to recover
-        this.Deactivate();
+        // Try to recover and retry
+        this.Status.IntervalIdentifier = null;
+        if (this.Activate()) {
+          this.CBLogger.Update(
+            this.Status.Name + "::Activate",
+            "Bug seems to have recovered",
+            this.Status.IntervalIdentifier
+          );
+        } else {
+          this.CBLogger.Update(
+            this.Status.Name + "::Activate",
+            "Bug seems to NOT have recovered",
+            this.Status.IntervalIdentifier
+          );
+          return false;
+        }
       }
     } else {
-      this.CBLogger.Update(
-        this.Status.Name + "::Activate",
-        "Already active!",
-        this.Status.Active
-      );
+      if (this.Status.IntervalIdentifier !== null) {
+        this.CBLogger.Update(
+          this.Status.Name + "::Activate",
+          "Already active!",
+          this.Status.Active
+        );
+      } else {
+        // This is a bug
+        this.CBLogger.Update(
+          this.Status.Name + "::Activate",
+          "Bug! this.Status.IntervalIdentifier null, but manager is set active! Trying to recover",
+          this.Status.IntervalIdentifier
+        );
+
+        // Try to recover and retry
+        this.Status.Active = false;
+        if (this.Activate()) {
+          this.CBLogger.Update(
+            this.Status.Name + "::Activate",
+            "Bug seems to have recovered",
+            this.Status.IntervalIdentifier
+          );
+        } else {
+          this.CBLogger.Update(
+            this.Status.Name + "::Activate",
+            "Bug seems to NOT have recovered",
+            this.Status.IntervalIdentifier
+          );
+          return false;
+        }
+      }
     }
+
     return this.Status.Active;
   }
 
   Deactivate() {
     if (this.Status.Active) {
       if (this.Status.IntervalIdentifier === null) {
-        // this is a bug
+        // This is a bug
         this.CBLogger.Update(
           this.Status.Name + "::Deactivate",
-          "this.Status.IntervalIdentifier null, bug!",
+          "Bug! this.Status.IntervalIdentifier null, but manager is set active! Trying to recover",
           this.Status.IntervalIdentifier
         );
 
-        // try to recover
+        // Try to recover and retry
         this.Status.Active = false;
-        return false;
+        if (this.Deactivate()) {
+          this.CBLogger.Update(
+            this.Status.Name + "::Deactivate",
+            "Bug seems to have recovered",
+            this.Status.IntervalIdentifier
+          );
+        } else {
+          this.CBLogger.Update(
+            this.Status.Name + "::Deactivate",
+            "Bug seems to NOT have recovered",
+            this.Status.IntervalIdentifier
+          );
+          return false;
+        }
       } else {
         let that = this;
         window.clearInterval(that.Status.IntervalIdentifier);
@@ -133,11 +207,37 @@ class ManagerBase {
         );
       }
     } else {
-      this.CBLogger.Update(
-        this.Status.Name + "::Deactivate",
-        "Already inactive!",
-        this.Status.Active
-      );
+      if (this.Status.IntervalIdentifier === null) {
+        this.CBLogger.Update(
+          this.Status.Name + "::Deactivate",
+          "Already inactive!",
+          this.Status.Active
+        );
+      } else {
+        // This is a bug
+        this.CBLogger.Update(
+          this.Status.Name + "::Deactivate",
+          "Bug! this.Status.IntervalIdentifier not null, but manager is set not active! Trying to recover",
+          this.Status.IntervalIdentifier
+        );
+
+        // Try to recover and retry
+        this.Status.Active = true;
+        if (this.Deactivate()) {
+          this.CBLogger.Update(
+            this.Status.Name + "::Deactivate",
+            "Bug seems to have recovered",
+            this.Status.IntervalIdentifier
+          );
+        } else {
+          this.CBLogger.Update(
+            this.Status.Name + "::Deactivate",
+            "Bug seems to NOT have recovered",
+            this.Status.IntervalIdentifier
+          );
+          return false;
+        }
+      }
     }
     return !this.Status.Active;
   }
@@ -150,7 +250,7 @@ class ManagerBase {
   }
 }
 
-class ShimmersManager extends ManagerBase {
+class ShimmersManager extends RepeatingManager {
   Check() {
     this.PopAllShimmers();
   }
@@ -161,12 +261,16 @@ class ShimmersManager extends ManagerBase {
     let len = elements.length;
     if (len > 0) {
       CBDOMUtilities.ClickDOMElements(elements);
-      this.CBLogger.Update("ShimmersManager::Check", "Popped shimmers", len);
+      this.CBLogger.Update(
+        this.Status.Name + "::PopAllShimmers",
+        len,
+        elements
+      );
     }
   }
 }
 
-class WrinklersManager extends ManagerBase {
+class WrinklersManager extends RepeatingManager {
   Check() {
     // Manage the number of wrinklers
 
@@ -184,10 +288,6 @@ class WrinklersManager extends ManagerBase {
       }
     }, this);
 
-    // Log
-    this.CBLogger.Update("Log", "shinies", shinies.length);
-    this.CBLogger.Update("Log", "non_shines", non_shines.length);
-
     // Check if they are almost the max and ensure one spot free for new wrinklers
     let tot_wrinklers = shinies.length + non_shines.length;
     let desired_n_wrinklers = Math.min(
@@ -200,13 +300,7 @@ class WrinklersManager extends ManagerBase {
       // Pop normal wrinklers first
       while (wrinklers_to_pop > 0 && non_shines.length > 0) {
         let wrinkler_to_pop = non_shines.pop_random();
-        this.CBLogger.Update(
-          "pop",
-          "non_shiny_wrinkler",
-          JSON.stringify(wrinkler_to_pop)
-        );
         this.PopWrinkler(wrinkler_to_pop);
-
         wrinklers_to_pop--;
       }
 
@@ -215,14 +309,7 @@ class WrinklersManager extends ManagerBase {
         // Pop normal wrinklers first
         while (wrinklers_to_pop > 0 && shinies.length > 0) {
           let wrinkler_to_pop = shinies.pop_random();
-
-          this.CBLogger.Update(
-            "pop",
-            "shiny_wrinkler",
-            JSON.stringify(wrinkler_to_pop)
-          );
           this.PopWrinkler(wrinkler_to_pop);
-
           wrinklers_to_pop--;
         }
       }
@@ -230,12 +317,270 @@ class WrinklersManager extends ManagerBase {
   }
 
   PopWrinkler(wrinkler) {
+    this.CBLogger.Update(
+      this.Status.Name + "::PopWrinkler",
+      wrinkler,
+      "shiny: " + wrinkler.type
+    );
     wrinkler.hp = 0;
     // TODO: Find a way to do this through the mouse click event
   }
 }
 
-class AutoClickerChecker extends ManagerBase {
+class GrimoireManager extends ManagerBase {
+  // Checks if we can execute force the hand of fate
+  constructor(name, settings, CookieButlerLogger) {
+    super(name, settings, CookieButlerLogger);
+    this.Status.TimeoutIdentifier = null;
+    this.Status.GameSupportedVersions = [2.022];
+
+    this.Grimoire = null;
+    this.FindGrimoire();
+
+    this.Settings.DesiredSpellOutcomes = [
+      "click frenzy",
+      "cookie storm",
+      "building special",
+      "cookie storm drop",
+      "free sugar lump",
+      "blood frenzy",
+      "cursed finger",
+    ];
+
+    // Since we are exploiting some game's internal logic, ensure we are working with the same game's version
+    if (!this.Status.GameSupportedVersions.includes(window.Game.version)) {
+      console.log(
+        "Game version not ufficially supported! The grimoire spells simulations might be incorrect!"
+      );
+      console.log("Supported versions:", this.Status.GameSupportedVersions);
+    }
+  }
+
+  FindGrimoire() {
+    // Check if the grimoire is activated in the game
+    if (window.Game.Objects["Wizard tower"].minigameLoaded) {
+      this.Grimoire = window.Game.Objects["Wizard tower"].minigame;
+    } else {
+      this.Grimoire = null;
+    }
+  }
+
+  CalculateTimeToMana(targetMagic) {
+    // From CookieMonster
+
+    let game_frames_needed = 0;
+
+    let currentMagic = this.Grimoire.magic;
+    while (currentMagic < targetMagic) {
+      currentMagic +=
+        Math.max(
+          0.002,
+          Math.pow(currentMagic / Math.max(this.Grimoire.magicM, 100), 0.5)
+        ) * 0.002;
+      game_frames_needed++;
+    }
+
+    return (game_frames_needed / window.Game.fps) * 1000;
+  }
+
+  SimulateSpell(spell) {
+    // The outcome of the spell (We don't really care wether we win or not, we just care about the desired outcome)
+    let spell_result = {
+      win: false,
+      outcome: "useless",
+    };
+
+    // Get the chance of failure (Game's fail chance is more comples due to `gambler's feber dream`, which we ignore)
+    let failChance = this.Grimoire.getFailChance(spell);
+
+    Math.seedrandom(window.Game.seed + "/" + this.Grimoire.spellsCastTotal);
+
+    // Understand if we win
+    spell_result.win = !spell.fail || Math.random() < 1 - failChance;
+
+    // Understsand the outcome
+    switch (spell.id) {
+      case this.Grimoire.spells["hand of fate"].id:
+        if (spell_result.win) {
+          // Call twice because why not (maybe something with new shimmer?)
+          Math.random();
+          Math.random();
+
+          let choices = [];
+          choices.push("frenzy", "multiply cookies");
+          if (!window.Game.hasBuff("Dragonflight"))
+            choices.push("click frenzy");
+          if (Math.random() < 0.1)
+            choices.push("cookie storm", "cookie storm", "blab");
+          if (window.Game.BuildingsOwned >= 10 && Math.random() < 0.25)
+            choices.push("building special");
+          //if (Math.random()<0.2) choices.push('clot','cursed finger','ruin cookies');
+          if (Math.random() < 0.15) choices = ["cookie storm drop"];
+          if (Math.random() < 0.0001) choices.push("free sugar lump");
+
+          spell_result.outcome = window.choose(choices);
+        } else {
+          let choices = [];
+          choices.push("clot", "ruin cookies");
+          if (Math.random() < 0.1)
+            choices.push("cursed finger", "blood frenzy");
+          if (Math.random() < 0.003) choices.push("free sugar lump");
+          if (Math.random() < 0.1) choices = ["blab"];
+          spell_result.outcome = window.choose(choices);
+        }
+
+        break;
+
+      case this.Grimoire.spells["resurrect abomination"].id:
+        break;
+
+      case this.Grimoire.spells["conjure baked goods"].id:
+        break;
+
+      default:
+        spell_result.outcome = "unknown_spell";
+    }
+
+    // Restore the random generator
+    Math.seedrandom();
+
+    this.CBLogger.Update(
+      this.Status.Name + "::SimulateSpell",
+      spell,
+      spell_result
+    );
+    return spell_result;
+  }
+
+  CastSpell(spell, expected_result) {
+    // Click the spell cast button
+    CBDOMUtilities.ClickDOMElement(
+      CBDOMUtilities.GetDOMElement("grimoireSpell" + spell.id)
+    );
+
+    // Wait for the game to create the cookie and then ensure to pop the cookie! (in case the shimmer manager is disabled)
+    window.setTimeout(function () {
+      let elements = CBDOMUtilities.GetDOMElements("shimmer");
+      let len = elements.length;
+      if (len > 0) {
+        CBDOMUtilities.ClickDOMElements(elements);
+      }
+    }, 500);
+
+    this.CBLogger.Update(
+      this.Status.Name + "::CastSpell",
+      spell,
+      expected_result
+    );
+  }
+
+  Replan(ms) {
+    // Replan whenever we will have enough mana
+    let that = this;
+    this.Status.TimeoutIdentifier = window.setTimeout(function () {
+      that.Status.TimeoutIdentifier = null;
+      // Figure out which spell to cast
+      that.Plan();
+    }, ms);
+
+    this.CBLogger.Update(
+      this.Status.Name + "::Replan",
+      this.Status.TimeoutIdentifier,
+      ms
+    );
+    return;
+  }
+
+  Plan() {
+    if (this.Grimoire == null) {
+      // There is no grimoire, try to find it and try again next second
+      this.FindGrimoire();
+      this.CBLogger.Update(
+        this.Status.Name + "::Plan",
+        "No grimoire!",
+        this.Grimoire
+      );
+      return this.Replan(1000);
+    }
+
+    let ms_to_mana = this.CalculateTimeToMana(this.Grimoire.magicM);
+
+    if (ms_to_mana > 0) {
+      // We can't cast the spell, it doesn't make sense to figure out what to do
+      this.CBLogger.Update(
+        this.Status.Name + "::Plan",
+        "Mana not full!",
+        ms_to_mana
+      );
+      return this.Replan(ms_to_mana + 5);
+    }
+
+    // We can cast the spell!
+    let spell = this.Grimoire.spells["hand of fate"];
+
+    // Find which is the best spell to cast
+    let result = this.SimulateSpell(spell);
+
+    if (result.outcome in this.Settings.DesiredSpellOutcomes) {
+      // We can cast it! (or at least cast it whenever we can)
+      this.CastSpell(spell);
+    } else {
+      // Try to cast another spell
+      spell = this.Grimoire.spells["conjure baked goods"];
+      result = this.SimulateSpell(spell);
+      if (result.win) {
+        this.CastSpell(spell);
+      } else {
+        // Bad luck.
+        // even if `resurrect abomination` fails, it is not a big deal, come on :)
+        spell = this.Grimoire.spells["resurrect abomination"];
+        this.CastSpell(spell);
+      }
+    }
+
+    // Execute another spell whenever we will have more mana
+    ms_to_mana = this.CalculateTimeToMana(this.Grimoire.magicM);
+    this.Replan(ms_to_mana + 5);
+    return;
+  }
+
+  Activate() {
+    this.Plan();
+    this.Status.Active = true;
+    this.CBLogger.Update(
+      this.Status.Name + "::Activate",
+      "Activated",
+      this.Status.Active
+    );
+    return this.Status.Active;
+  }
+
+  Deactivate() {
+    let that = this;
+    window.clearTimeout(that.Status.TimeoutIdentifier);
+    this.Status.TimeoutIdentifier = null;
+    this.Status.Active = false;
+    this.CBLogger.Update(
+      this.Status.Name + "::Deactivate",
+      "Deactivated",
+      this.Status.Active
+    );
+    return !this.Status.Active;
+  }
+
+  Restart() {
+    this.Deactivate();
+    this.Activate();
+    this.CBLogger.Update(
+      this.Status.Name + "::Restart",
+      "Restarted",
+      this.Status.Active
+    );
+    return this.Status.Active;
+  }
+}
+
+class AutoClickerChecker extends RepeatingManager {
   constructor(
     name,
     settings,
@@ -271,17 +616,17 @@ class Logger {
     };
   }
 
-  Update(action, type, quantity) {
+  Update(action, result, notes) {
     // Save a datapoint in the history
     this.Historic.push({
       Time_ms: Date.now(),
       action: action,
-      type: type,
-      quantity: quantity,
+      result: result,
+      notes: notes,
     });
 
     if (this.Settings.LoggingLevel > 0) {
-      console.log(action, type, quantity);
+      console.log(action, result, notes);
     }
   }
 
@@ -322,14 +667,22 @@ class AutoClicker {
     this.BigCookieClickEventIdentifier = window.setInterval(function () {
       that.ClickBigCookie();
     }, clicking_period);
-    this.CBLogger.Update("started", "Autoclicker", clicking_period);
+    this.CBLogger.Update(
+      this.Status.Name + "::Start",
+      clicking_period,
+      this.Requests
+    );
   }
 
   Stop() {
     // Stop the autoclicker
     window.clearInterval(this.BigCookieClickEventIdentifier);
     this.BigCookieClickEventIdentifier = null;
-    this.CBLogger.Update("stopped", "Autoclicker", 1);
+    this.CBLogger.Update(
+      this.Status.Name + "::Stop",
+      this.BigCookieClickEventIdentifier,
+      this.Requests
+    );
   }
 
   n_demands() {
@@ -352,13 +705,11 @@ class AutoClicker {
   }
 
   Demand(demander) {
-    this.CBLogger.Update("demanded", demander, 1);
     this.Requests[demander] = 1;
     this.SmartStart();
   }
 
   Retreat(retreater) {
-    this.CBLogger.Update("retreated", retreater, 1);
     this.Requests[retreater] = 0;
     this.SmartStart();
   }
@@ -385,9 +736,6 @@ class CookieButler {
         this.Stats
       ),
       Shimmers: new ShimmersManager("shimmers_manager", {}, 800, this.Stats),
-    };
-
-    this.AutoclickerCheckers = {
       ClickFrenzy: new AutoClickerChecker(
         "click_frenzy_checker",
         {},
@@ -412,6 +760,16 @@ class CookieButler {
         this.AutoClickerInstance,
         "Elder frenzy"
       ),
+      CursedFinger: new AutoClickerChecker(
+        "cursed_finger_checker",
+        {},
+        1000,
+        this.Stats,
+        this.AutoClickerInstance,
+        "Cursed finger"
+      ),
+
+      Grimoire: new GrimoireManager("grimoire_manager", {}, this.Stats),
     };
 
     this.IntervalIdentifiers = {};
@@ -427,42 +785,9 @@ class CookieButler {
       } else {
         this.Stats.Update(
           "Activated",
-          "Failed to activate " + name + ", restarting",
+          "Failed to activate " + name,
           manager.Status
         );
-
-        if (!manager.Restart()) {
-          this.Stats.Update(
-            "Activated",
-            "Failed to restart " + name,
-            manager.Status
-          );
-        } else {
-          this.Stats.Update("Activated", name, manager.Status);
-        }
-      }
-    }, this);
-
-    // Activate all the AutoclickerCheckers
-    Object.entries(this.AutoclickerCheckers).forEach(([name, checker]) => {
-      if (checker.Activate()) {
-        this.Stats.Update("Activated", name, checker.Status);
-      } else {
-        this.Stats.Update(
-          "Activated",
-          "Failed to activate " + name + ", restarting",
-          checker.Status
-        );
-
-        if (!checker.Restart()) {
-          this.Stats.Update(
-            "Activated",
-            "Failed to restart " + name,
-            checker.Status
-          );
-        } else {
-          this.Stats.Update("Activated", name, checker.Status);
-        }
       }
     }, this);
   }
@@ -476,43 +801,9 @@ class CookieButler {
         // There has been an error, retry
         this.Stats.Update(
           "Deactivated",
-          "Failed to deactivate " + name + ", retrying",
+          "Failed to deactivate " + name,
           manager.Status
         );
-
-        if (!manager.Deactivate()) {
-          this.Stats.Update(
-            "Deactivated",
-            "Failed to retry deactivate " + name,
-            manager.Status
-          );
-        } else {
-          this.Stats.Update("Deactivated", name, manager.Status);
-        }
-      }
-    }, this);
-
-    // Deactivate all the AutoclickerCheckers
-    Object.entries(this.AutoclickerCheckers).forEach(([name, checker]) => {
-      if (checker.Deactivate()) {
-        this.Stats.Update("Deactivated", name, checker.Status);
-      } else {
-        // There has been an error, retry
-        this.Stats.Update(
-          "Deactivated",
-          "Failed to deactivate " + name + ", retrying",
-          checker.Status
-        );
-
-        if (!checker.Deactivate()) {
-          this.Stats.Update(
-            "Deactivated",
-            "Failed to retry deactivate " + name,
-            checker.Status
-          );
-        } else {
-          this.Stats.Update("Deactivated", name, checker.Status);
-        }
       }
     }, this);
   }
