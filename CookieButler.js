@@ -1,16 +1,14 @@
 /*jshint esversion: 6 */
 class ManagerBase {
-  constructor(name, settings, interval_ms, CookieButlerLogger) {
+  constructor(name, settings, CookieButlerLogger) {
     // Settings of the manager
     this.Settings = settings;
-    this.Settings.Interval_ms = interval_ms;
 
     // Status
     this.Status = {
       Name: name,
       Active: false,
       GameFound: false,
-      IntervalIdentifier: null,
     };
 
     // Logger in order to communicate with CookieButler
@@ -46,7 +44,29 @@ class ManagerBase {
   }
 
   Check() {
-    console.log(this.Status.Name, "has no implemented actions");
+    console.log(this.Status.Name, "Didn' implement Check()");
+  }
+
+  Activate() {
+    console.log(this.Status.Name, "Didn' implement Activate()");
+  }
+
+  Deactivate() {
+    console.log(this.Status.Name, "Didn' implement Deactivate()");
+  }
+
+  Restart() {
+    console.log(this.Status.Name, "Didn' implement Restart()");
+  }
+}
+
+class RepeatingManager extends ManagerBase {
+  constructor(name, settings, interval_ms, CookieButlerLogger) {
+    super(name, settings, CookieButlerLogger);
+
+    this.Settings.Interval_ms = interval_ms;
+
+    this.Status.IntervalIdentifier = null;
   }
 
   Activate() {
@@ -127,7 +147,7 @@ class ManagerBase {
   }
 }
 
-class ShimmersManager extends ManagerBase {
+class ShimmersManager extends RepeatingManager {
   Check() {
     // Click golden cookies and reindeers
     // Pop all of them
@@ -138,7 +158,7 @@ class ShimmersManager extends ManagerBase {
   }
 }
 
-class WrinklersManager extends ManagerBase {
+class WrinklersManager extends RepeatingManager {
   Check() {
     // Manage the number of wrinklers
 
@@ -202,7 +222,214 @@ class WrinklersManager extends ManagerBase {
   }
 }
 
-class AutoClickerChecker extends ManagerBase {
+class GrimoireManager extends ManagerBase {
+  // Checks if we can execute force the hand of fate
+  constructor(name, settings, CookieButlerLogger) {
+    super(name, settings, CookieButlerLogger);
+    this.Status.TimeoutIdentifier = null;
+    this.Status.GameSupportedVersions = [2.022];
+
+    this.Grimoire = null;
+    this.FindGrimoire();
+
+    this.Settings.DesiredSpellOutcomes = ["todo"];
+
+    // Since we are exploiting some game's internal logic, ensure we are working with the same game's version
+    if (!this.GameSupportedVersions.includes(Game.version)) {
+      console.log(
+        "Game version not ufficially supported! The grimoire spells simulations might be incorrect!"
+      );
+      console.log("Supported versions:", this.Status.GameSupportedVersions);
+    }
+
+    // Ensure `choose` function is present
+    if (typeof choose != undefined) {
+      // Game 2.022's implementation
+      window.choose = function (arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+      };
+    }
+  }
+
+  FindGrimoire() {
+    // Check if the grimoire is activated in the game
+    if (Game.Objects["Wizard tower"].minigameLoaded()) {
+      this.Grimoire = Game.Objects["Wizard tower"];
+    } else {
+      this.Grimoire = null;
+    }
+  }
+
+  CalculateTimeToMaxMana() {
+    // Grimoire.magicPS is actually magic per frame
+    let magic_s = this.Grimoire.magicPS * Game.fps;
+    let magic_ms = magic_s / 1000;
+
+    let magic_needed = this.Grimoire.magicM - this.Grimoire.magic;
+
+    return magic_needed / magic_ms;
+  }
+
+  SimulateSpell(spell) {
+    // The outcome of the spell (We don't really care wether we win or not, we just care about the desired outcome)
+    let spell_result = {
+      win: false,
+      outcome: "useless",
+    };
+
+    // Get the chance of failure (Game's fail chance is more comples due to `gambler's feber dream`, which we ignore)
+    let failChance = this.Grimoire.getFailChance(spell);
+
+    Math.seedrandom(Game.seed + "/" + this.Grimoire.spellsCastTotal);
+
+    // Understand if we win
+    spell_result.win = spell.fail || Math.random() < 1 - failChance;
+
+    // Understsand the outcome
+    switch (spell.name) {
+      case this.Grimoire.spells["hand of fate"]:
+        if (result.win) {
+          let choices = [];
+          choices.push("frenzy", "multiply cookies");
+          if (!Game.hasBuff("Dragonflight")) choices.push("click frenzy");
+          if (Math.random() < 0.1)
+            choices.push("cookie storm", "cookie storm", "blab");
+          if (Game.BuildingsOwned >= 10 && Math.random() < 0.25)
+            choices.push("building special");
+          //if (Math.random()<0.2) choices.push('clot','cursed finger','ruin cookies');
+          if (Math.random() < 0.15) choices = ["cookie storm drop"];
+          if (Math.random() < 0.0001) choices.push("free sugar lump");
+
+          result.outcome = choose(choices);
+        } else {
+          let choices = [];
+          choices.push("clot", "ruin cookies");
+          if (Math.random() < 0.1)
+            choices.push("cursed finger", "blood frenzy");
+          if (Math.random() < 0.003) choices.push("free sugar lump");
+          if (Math.random() < 0.1) choices = ["blab"];
+          result.outcome = choose(choices);
+        }
+
+        break;
+
+      case this.Grimoire.spells["resurrect abomination"]:
+        break;
+
+      case this.Grimoire.spells["conjure baked goods"]:
+        break;
+
+      default:
+        spell_result.outcome = "unknown_spell";
+    }
+
+    // Restore the random generator
+    Math.seedrandom();
+
+    return spell_result;
+  }
+
+  CastSpell(spell) {
+    // Cast a spell
+    document
+      .getElementById("grimoireSpell" + spell.id)
+      .dispatchEvent(new MouseEvent("click", {}));
+
+    // Alternative: this.Grimoire.castSpell(spell, {});
+  }
+
+  Replan(ms) {
+    // Replan whenever we will have enough mana
+    let that = this;
+    this.Status.TimeoutIdentifier = window.setTimeout(function () {
+      that.Status.TimeoutIdentifier = null;
+      // Figure out which spell to cast
+      that.Plan();
+    }, ms);
+
+    return;
+  }
+
+  Plan() {
+    if (this.Grimoire == null) {
+      // There is no grimoire, try to find it and try again next second
+      this.FindGrimoire();
+      return this.Replan(1000);
+    }
+
+    let ms_to_mana = this.CalculateTimeToMaxMana();
+
+    if (ms_to_mana > 0) {
+      // We can't cast the spell, it doesn't make sense to figure out what to do
+      return this.Replan(ms_to_mana + 5);
+    }
+
+    // We can cast the spell!
+    let spell = this.Grimoire.spells["hand of fate"];
+
+    // Find which is the best spell to cast
+    let result = this.SimulateSpell(spell);
+
+    if (result.outcome in this.Settings.DesiredSpellOutcomes) {
+      // We can cast it! (or at least cast it whenever we can)
+      this.CastSpell(spell);
+    } else {
+      // Try to cast another spell
+      spell = this.Grimoire.spells["conjure baked goods"];
+      result = this.SimulateSpell(spell);
+      if (result.win) {
+        this.CastSpell(spell);
+      } else {
+        // Bad luck.
+        // even if `resurrect abomination` fails, it is not a big deal, come on :)
+        spell = this.Grimoire.spells["resurrect abomination"];
+        this.CastSpell(spell);
+      }
+    }
+
+    // Execute another spell whenever we will have more mana
+    ms_to_mana = CalculateTimeToMaxMana();
+    this.Replan(ms_to_mana + 5);
+    return;
+  }
+
+  Activate() {
+    this.Plan();
+    this.Status.Active = true;
+    this.CBLogger.Update(
+      this.Status.Name + "::Activate",
+      "Activated",
+      this.Status.Active
+    );
+    return this.Status.Active;
+  }
+
+  Deactivate() {
+    let that = this;
+    window.clearTimeout(that.Status.TimeoutIdentifier);
+    this.Status.TimeoutIdentifier = null;
+    this.Status.Active = false;
+    this.CBLogger.Update(
+      this.Status.Name + "::Deactivate",
+      "Deactivated",
+      this.Status.Active
+    );
+    return !this.Status.Active;
+  }
+
+  Restart() {
+    this.Deactivate();
+    this.Activate();
+    this.CBLogger.Update(
+      this.Status.Name + "::Restart",
+      "Restarted",
+      this.Status.Active
+    );
+    return this.Status.Active;
+  }
+}
+
+class AutoClickerChecker extends RepeatingManager {
   constructor(
     name,
     settings,
