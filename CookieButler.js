@@ -373,16 +373,22 @@ class GrimoireManager extends ManagerBase {
     }
   }
 
-  CalculateTimeToMaxMana() {
-    // TODO: Fix, doesn't consider the mana recharging speed increases
+  CalculateTimeToMana(targetMagic) {
+    // From CookieMonster
 
-    // Grimoire.magicPS is actually magic per frame
-    let magic_s = this.Grimoire.magicPS * window.Game.fps;
-    let magic_ms = magic_s / 1000;
+    let game_frames_needed = 0;
 
-    let magic_needed = this.Grimoire.magicM - this.Grimoire.magic;
+    let currentMagic = this.Grimoire.magic;
+    while (currentMagic < targetMagic) {
+      currentMagic +=
+        Math.max(
+          0.002,
+          Math.pow(currentMagic / Math.max(this.Grimoire.magicM, 100), 0.5)
+        ) * 0.002;
+      game_frames_needed++;
+    }
 
-    return magic_needed / magic_ms;
+    return game_frames_needed / window.Game.fps / 1000;
   }
 
   SimulateSpell(spell) {
@@ -454,7 +460,7 @@ class GrimoireManager extends ManagerBase {
     return spell_result;
   }
 
-  CastSpell(spell) {
+  CastSpell(spell, expected_result) {
     // Click the spell cast button
     CBDOMUtilities.ClickDOMElement(
       CBDOMUtilities.GetDOMElement("grimoireSpell" + spell.id)
@@ -471,8 +477,8 @@ class GrimoireManager extends ManagerBase {
 
     this.CBLogger.Update(
       this.Status.Name + "::CastSpell",
-      "Casting spell!",
-      spell
+      spell,
+      expected_result
     );
   }
 
@@ -618,17 +624,17 @@ class Logger {
     };
   }
 
-  Update(action, type, quantity) {
+  Update(action, result, notes) {
     // Save a datapoint in the history
     this.Historic.push({
       Time_ms: Date.now(),
       action: action,
-      type: type,
-      quantity: quantity,
+      result: result,
+      notes: notes,
     });
 
     if (this.Settings.LoggingLevel > 0) {
-      console.log(action, type, quantity);
+      console.log(action, result, notes);
     }
   }
 
