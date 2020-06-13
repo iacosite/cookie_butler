@@ -1,4 +1,27 @@
 /*jshint esversion: 6 */
+class CBDOMUtilities {
+  static GetDOMElement(element_id) {
+    return document.getElementById(element_id);
+  }
+
+  static GetDOMElements(class_name) {
+    return Array.from(document.getElementsByClassName(class_name));
+  }
+
+  static ClickDOMElement(dom_element) {
+    // Implements natural mouse click
+    // dom_element.dispatchEvent(new MouseEvent("mousedown"), {});
+    // dom_element.dispatchEvent(new MouseEvent("mouseup"), {});
+    dom_element.dispatchEvent(new MouseEvent("click"), {});
+  }
+
+  static ClickDOMElements(elements) {
+    elements.forEach((el) => {
+      CBDOMUtilities.ClickDOMElement(el);
+    });
+  }
+}
+
 class ManagerBase {
   constructor(name, settings, CookieButlerLogger) {
     // Settings of the manager
@@ -149,12 +172,17 @@ class RepeatingManager extends ManagerBase {
 
 class ShimmersManager extends RepeatingManager {
   Check() {
-    // Click golden cookies and reindeers
-    // Pop all of them
-    window.Game.shimmers.forEach(function (shimmer) {
-      shimmer.pop();
-      this.CBLogger.Update("pop", shimmer.type, 1);
-    }, this);
+    this.PopAllShimmers();
+  }
+
+  PopAllShimmers() {
+    // Click all the golden cookies and reindeers
+    let elements = CBDOMUtilities.GetDOMElements("shimmer");
+    let len = elements.length;
+    if (len > 0) {
+      CBDOMUtilities.ClickDOMElements(elements);
+      this.CBLogger.Update("ShimmersManager::Check", "Popped shimmers", len);
+    }
   }
 }
 
@@ -197,7 +225,7 @@ class WrinklersManager extends RepeatingManager {
           "non_shiny_wrinkler",
           JSON.stringify(wrinkler_to_pop)
         );
-        wrinkler_to_pop.hp = 0;
+        this.PopWrinkler(wrinkler_to_pop);
 
         wrinklers_to_pop--;
       }
@@ -213,12 +241,17 @@ class WrinklersManager extends RepeatingManager {
             "shiny_wrinkler",
             JSON.stringify(wrinkler_to_pop)
           );
-          wrinkler_to_pop.hp = 0;
+          this.PopWrinkler(wrinkler_to_pop);
 
           wrinklers_to_pop--;
         }
       }
     }
+  }
+
+  PopWrinkler(wrinkler) {
+    wrinkler.hp = 0;
+    // TODO: Find a way to do this through the mouse click event
   }
 }
 
@@ -505,9 +538,7 @@ class AutoClicker {
 
   ClickBigCookie() {
     // Click the big cookie once
-    document
-      .getElementById("bigCookie")
-      .dispatchEvent(new MouseEvent("click", {}));
+    CBDOMUtilities.ClickDOMElement(CBDOMUtilities.GetDOMElement("bigCookie"));
   }
 
   Start() {
