@@ -354,14 +354,6 @@ class GrimoireManager extends ManagerBase {
       );
       console.log("Supported versions:", this.Status.GameSupportedVersions);
     }
-
-    // Ensure `choose` function is present
-    if (typeof choose != undefined) {
-      // Game 2.022's implementation
-      window.choose = function (arr) {
-        return arr[Math.floor(Math.random() * arr.length)];
-      };
-    }
   }
 
   FindGrimoire() {
@@ -511,7 +503,7 @@ class GrimoireManager extends ManagerBase {
       return this.Replan(1000);
     }
 
-    let ms_to_mana = this.CalculateTimeToMaxMana();
+    let ms_to_mana = this.CalculateTimeToMana(this.Grimoire.magicM);
 
     if (ms_to_mana > 0) {
       // We can't cast the spell, it doesn't make sense to figure out what to do
@@ -547,7 +539,7 @@ class GrimoireManager extends ManagerBase {
     }
 
     // Execute another spell whenever we will have more mana
-    ms_to_mana = this.CalculateTimeToMaxMana();
+    ms_to_mana = this.CalculateTimeToMana(this.Grimoire.magicM);
     this.Replan(ms_to_mana + 5);
     return;
   }
