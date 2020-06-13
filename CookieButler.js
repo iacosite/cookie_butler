@@ -367,7 +367,6 @@ class AutoClicker {
 class CookieButler {
   constructor() {
     this.Settings = {
-      DefaultWrinklersNumber: 8,
       DefaultLoggingLevel: 0,
     };
 
@@ -379,7 +378,7 @@ class CookieButler {
       Wrinklers: new WrinklersManager(
         "wrinklers_manager",
         {
-          DesiredWrinklersNumber: this.Settings.DefaultWrinklersNumber,
+          DesiredWrinklersNumber: 8,
           PopShinyWrinklers: false,
         },
         5000,
