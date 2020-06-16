@@ -265,6 +265,19 @@ class ShimmersManager extends RepeatingManager {
   }
 
   PopAllShimmers() {
+    window.Game.shimmers.forEach((shimmer) => this.PopShimmer(shimmer));
+  }
+
+  PopShimmer(shimmer) {
+    this.CBLogger.Update(
+      this.Status.Name + "::PopShimmer",
+      "Wrath: " + shimmer.wrath,
+      shimmer
+    );
+    shimmer.pop();
+  }
+
+  PopAllShimmersByClicking() {
     // Click all the golden cookies and reindeers
     let elements = CBDOMUtilities.GetDOMElements("shimmer");
     let len = elements.length;
