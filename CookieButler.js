@@ -20,6 +20,29 @@ class CBDOMUtilities {
       CBDOMUtilities.ClickDOMElement(el);
     });
   }
+
+  static GetObjectDOMElement(object) {
+    return CBDOMUtilities.GetDOMElement("product" + object.id);
+  }
+
+  static GetUpgradeDOMElement(upgrade) {
+    // Find the id of the upgrade
+    let upgrade_id = 0;
+    let found = Object.values(window.Game.UpgradesInStore).some(
+      (gameUpgrade) => {
+        if (gameUpgrade.id == upgrade.id) {
+          return gameUpgrade;
+        }
+        upgrade_id++;
+      }
+    );
+    if (found) {
+      return CBDOMUtilities.GetDOMElement("upgrade" + upgrade_id);
+    } else {
+      console.log("upgrade", upgrade, "not found");
+      return null;
+    }
+  }
 }
 
 class ManagerBase {
@@ -550,6 +573,7 @@ class GrimoireManager extends ManagerBase {
       // Try to cast another spell
       spell = this.Grimoire.spells["conjure baked goods"];
       result = this.SimulateSpell(spell);
+
       let any_wrinkler = window.Game.wrinklers.some((w) => w.close == 1);
 
       if (result.win || !any_wrinkler) {
@@ -628,6 +652,183 @@ class AutoClickerChecker extends RepeatingManager {
     } else {
       this.AutoClicker.Retreat(this.Status.Name);
     }
+  }
+}
+
+class AutoBuyerGameConnector {
+  findBestItemFunc() {
+    let bestItem = this.FindBestItem();
+    return this.ToCookieClickerItem(bestItem);
+  }
+
+  FindBestItem() {}
+
+  ToCookieClickerItem(item) {
+    // This function converts the item returned from `this.FindBestItem` to the Object/Upgrade object from CookieClicker.
+    // e.g.: In the case of the best item to buy to be the wizard towes, ToCookieClickerIterm should return `Game.Objects['Wizard Tower']`
+  }
+
+  GetDesiredBankAmount() {
+    // Return the desired amount of cookies in the bank
+  }
+}
+
+class CookieMonsterConnector extends AutoBuyerGameConnector {
+  constructor() {
+    super();
+    this.valid = false;
+
+    if (window.CM) {
+      this.CM = window.CM;
+      this.valid = true;
+    }
+  }
+
+  FindBestItem() {
+    if (!this.valid) {
+      return null;
+    }
+
+    // Find the best item
+    let bestBuilding = Object.keys(this.CM.Cache.Objects)[0];
+    Object.keys(this.CM.Cache.Objects).forEach((currBuilding) => {
+      if (
+        this.CM.Cache.Objects[currBuilding].pp <
+        this.CM.Cache.Objects[bestBuilding].pp
+      ) {
+        bestBuilding = currBuilding;
+      }
+    });
+
+    let bestUpgrade = Object.values(window.Game.UpgradesInStore)[0].name;
+    Object.values(window.Game.UpgradesInStore).forEach((currUpgrade) => {
+      if (currUpgrade.pool == "toggle") {
+        return;
+      }
+
+      if (
+        this.CM.Cache.Upgrades[currUpgrade.name].pp <
+        this.CM.Cache.Upgrades[bestUpgrade].pp
+      ) {
+        bestUpgrade = currUpgrade.name;
+      }
+    });
+
+    if (
+      this.CM.Cache.Upgrades[bestUpgrade].pp <
+      this.CM.Cache.Objects[bestBuilding].pp
+    ) {
+      return bestUpgrade;
+    } else {
+      return bestBuilding;
+    }
+  }
+
+  ToCookieClickerItem(item) {
+    if (window.Game.Objects[item] !== undefined) {
+      return window.Game.Objects[item];
+    }
+
+    if (window.Game.Upgrades[item] !== undefined) {
+      return window.Game.Upgrades[item];
+    }
+
+    return null;
+  }
+
+  GetDesiredBankAmount() {
+    return this.CM.Cache.LuckyFrenzy;
+  }
+}
+
+class AutoBuyer extends RepeatingManager {
+  constructor(name, settings, interval_ms, CookieButlerLogger) {
+    super(name, settings, interval_ms, CookieButlerLogger);
+
+    this.GameConnector = null;
+    this.Settings.UseAdapterThreshold = true;
+    this.Settings.BuyInterval_ms = 300;
+  }
+
+  Activate() {
+    // Look for CookieMonster (use that in order to understand what to buy)
+    this.GameConnector = new CookieMonsterConnector();
+
+    if (!this.GameConnector.valid) {
+      this.CBLogger.Update(
+        this.Name + "::Activate",
+        "CookieMonster not found!",
+        this.CM
+      );
+      console.log(
+        "AutoBuyer requires CookeMonster to work correctly. Load it and then restart the manager with"
+      );
+      console.log("CB.Managers.AutoBuyer.Restart()");
+    }
+
+    if (this.GameConnector.valid) {
+      super.Activate();
+    } else {
+      console.log(
+        "AutoBuyer requires CookeMonster to work correctly. Impossible to activate"
+      );
+    }
+  }
+
+  ScheduleCheckFunction() {
+    this.Reschedule(10);
+    this.Status.Active = true;
+  }
+
+  AbortCheckFunction() {
+    let that = this;
+    window.clearTimeout(that.Status.IntervalIdentifier);
+    this.Status.IntervalIdentifier = null;
+    this.Status.Active = false;
+  }
+
+  Check() {
+    let bestItem = this.GameConnector.findBestItemFunc();
+
+    if (this.CanAfford(bestItem)) {
+      // Buy it and check again soon
+      this.Buy(bestItem);
+      this.Reschedule(this.Settings.BuyInterval_ms);
+    } else {
+      // Check again in a bit
+      this.Reschedule(this.Settings.Interval_ms);
+    }
+  }
+
+  Reschedule(interval_ms) {
+    // Reschedule the Check() function at at a definite time
+    let that = this;
+    this.Status.IntervalIdentifier = window.setTimeout(function () {
+      that.Check();
+    }, interval_ms);
+  }
+
+  CanAfford(bestItem) {
+    if (this.Settings.UseAdapterThreshold) {
+      return (
+        window.Game.cookies - bestItem.getPrice(1) >
+        this.GameConnector.GetDesiredBankAmount()
+      );
+    } else {
+      return bestItem.getPrice(1) < window.Game.cookies;
+    }
+  }
+
+  Buy(bestItem) {
+    // Find the button in the game interface
+    let is_an_object = typeof bestItem.type === "undefined";
+    let dom_item = null;
+    if (is_an_object) {
+      dom_item = CBDOMUtilities.GetObjectDOMElement(bestItem);
+    } else {
+      dom_item = CBDOMUtilities.GetUpgradeDOMElement(bestItem);
+    }
+    CBDOMUtilities.ClickDOMElement(dom_item);
   }
 }
 
@@ -801,9 +1002,9 @@ class CookieButler {
       ),
 
       Grimoire: new GrimoireManager("grimoire_manager", {}, this.Stats),
-    };
 
-    this.IntervalIdentifiers = {};
+      AutoBuyer: new AutoBuyer("autobuyer_manager", {}, 3000, this.Stats),
+    };
 
     this.Activate();
 
