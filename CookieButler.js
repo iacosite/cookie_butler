@@ -95,17 +95,13 @@ class RepeatingManager extends ManagerBase {
   Activate() {
     if (!this.Status.Active) {
       if (this.Status.IntervalIdentifier === null) {
-        let that = this;
-        this.Status.IntervalIdentifier = window.setInterval(function () {
-          that.Check();
-        }, that.Settings.Interval_ms);
+        this.ScheduleCheckFunction();
 
         this.CBLogger.Update(
           this.Status.Name + "::Activate",
           "Activated",
           this.Status.IntervalIdentifier
         );
-        this.Status.Active = true;
       } else {
         // This is a bug
         this.CBLogger.Update(
@@ -195,11 +191,7 @@ class RepeatingManager extends ManagerBase {
           return false;
         }
       } else {
-        let that = this;
-        window.clearInterval(that.Status.IntervalIdentifier);
-        this.Status.IntervalIdentifier = null;
-        this.Status.Active = false;
-
+        this.AbortCheckFunction();
         this.CBLogger.Update(
           this.Status.Name + "::Deactivate",
           "Deactivated",
@@ -247,6 +239,22 @@ class RepeatingManager extends ManagerBase {
     this.Activate();
 
     return this.Status.Active;
+  }
+
+  ScheduleCheckFunction() {
+    let that = this;
+    this.Status.IntervalIdentifier = window.setInterval(function () {
+      that.Check();
+    }, that.Settings.Interval_ms);
+
+    this.Status.Active = true;
+  }
+
+  AbortCheckFunction() {
+    let that = this;
+    window.clearInterval(that.Status.IntervalIdentifier);
+    this.Status.IntervalIdentifier = null;
+    this.Status.Active = false;
   }
 }
 
