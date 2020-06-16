@@ -1,44 +1,44 @@
 /*jshint esversion: 6 */
-class CBDOMUtilities {
-  static Settings = {
+var CBDOMUtilities = {
+  Settings: {
     TimeBetweenClicks_ms: 5,
-  };
+  },
 
-  static last_click = 0;
+  last_click: 0,
 
-  static GetDOMElement(element_id) {
+  GetDOMElement: function (element_id) {
     return document.getElementById(element_id);
-  }
+  },
 
-  static GetDOMElements(class_name) {
+  GetDOMElements: function (class_name) {
     return Array.from(document.getElementsByClassName(class_name));
-  }
+  },
 
-  static ClickDOMElement(dom_element) {
+  ClickDOMElement: function (dom_element) {
     // Implements natural mouse click
 
-    CBDOMUtilities.last_click =
-      Math.max(CBDOMUtilities.last_click, Date.now()) +
-      CBDOMUtilities.Settings.TimeBetweenClicks_ms;
+    this.last_click =
+      Math.max(this.last_click, Date.now()) +
+      this.GetSettings().TimeBetweenClicks_ms;
 
-    document.setTimeout(function () {
+    window.setTimeout(function () {
       // dom_element.dispatchEvent(new MouseEvent("mousedown"), {});
       // dom_element.dispatchEvent(new MouseEvent("mouseup"), {});
       dom_element.dispatchEvent(new MouseEvent("click"), {});
     }, this.last_click - Date.now);
-  }
+  },
 
-  static ClickDOMElements(elements) {
+  ClickDOMElements: function (elements) {
     elements.forEach((el) => {
-      CBDOMUtilities.ClickDOMElement(el);
+      this.ClickDOMElement(el);
     });
-  }
+  },
 
-  static GetObjectDOMElement(object) {
-    return CBDOMUtilities.GetDOMElement("product" + object.id);
-  }
+  GetObjectDOMElement: function (object) {
+    return this.GetDOMElement("product" + object.id);
+  },
 
-  static GetUpgradeDOMElement(upgrade) {
+  GetUpgradeDOMElement: function (upgrade) {
     // Find the id of the upgrade
     let upgrade_id = 0;
     let found = Object.values(window.Game.UpgradesInStore).some(
@@ -50,18 +50,133 @@ class CBDOMUtilities {
       }
     );
     if (found) {
-      return CBDOMUtilities.GetDOMElement("upgrade" + upgrade_id);
+      return this.GetDOMElement("upgrade" + upgrade_id);
     } else {
       console.log("upgrade", upgrade, "not found");
       return null;
     }
-  }
-}
+  },
+};
+
+var CBLogger = {
+  History: [],
+
+  Settings: {
+    LoggingLevel: 0,
+  },
+
+  Update: function (action, result, notes) {
+    // Save a datapoint in the history
+    this.History.push({
+      Time_ms: Date.now(),
+      action: action,
+      result: result,
+      notes: notes,
+    });
+
+    if (this.Settings.LoggingLevel > 0) {
+      console.log(action, result, notes);
+    }
+  },
+
+  Reset: function () {
+    this.History = [];
+  },
+
+  ToJson: function () {
+    console.log(JSON.stringify(this.History));
+  },
+};
+
+var CBAutoClicker = {
+  Requests: {
+    at_least_one_type: 0,
+  },
+
+  BigCookieClickEventIdentifier: null,
+
+  Settings: {
+    ClickFrequency: 100, // Clicks per second (Hz)
+  },
+
+  Status: {
+    StartedAutomatically: false,
+    Clicking: false,
+  },
+
+  ClickBigCookie: function () {
+    // Click the big cookie once
+    CBDOMUtilities.ClickDOMElement(CBDOMUtilities.GetDOMElement("bigCookie"));
+  },
+
+  n_demands: function () {
+    const count = (obj) => Object.values(obj).reduce((a, b) => a + b);
+
+    return count(this.Requests);
+  },
+
+  Start: function () {
+    let that = this;
+
+    // Start the autoclicker
+    const clicking_period = 1000 / this.Settings.ClickFrequency;
+    this.BigCookieClickEventIdentifier = window.setInterval(function () {
+      that.ClickBigCookie();
+    }, clicking_period);
+    window.CBLogger.Update(
+      "Autoclicker::Start",
+      clicking_period,
+      this.Requests
+    );
+
+    this.Status.Clicking = true;
+  },
+
+  Stop: function () {
+    // Stop the autoclicker
+    window.clearInterval(this.BigCookieClickEventIdentifier);
+    this.BigCookieClickEventIdentifier = null;
+    window.CBLogger.Update(
+      "Autoclicker::Stop",
+      this.BigCookieClickEventIdentifier,
+      this.Requests
+    );
+    this.Status.Clicking = false;
+  },
+
+  SmartStart: function () {
+    // Start the autoclicker only if there is at least one request
+    if (this.n_demands() > 0) {
+      if (this.BigCookieClickEventIdentifier === null) {
+        this.Start();
+        this.Status.StartedAutomatically = true;
+      }
+    } else {
+      if (this.BigCookieClickEventIdentifier !== null) {
+        if (this.Status.StartedAutomatically == true) {
+          this.Stop();
+          this.Status.StartedAutomatically = false;
+        }
+      }
+    }
+  },
+
+  Demand: function (demander) {
+    this.Requests[demander] = 1;
+    this.SmartStart();
+  },
+
+  Retreat: function (retreater) {
+    this.Requests[retreater] = 0;
+    this.SmartStart();
+  },
+};
 
 class ManagerBase {
-  constructor(name, settings, CookieButlerLogger) {
+  constructor(name, settings) {
     // Settings of the manager
-    this.Settings = settings;
+    this.Settings = {};
+    this.FillSettings(settings);
 
     // Status
     this.Status = {
@@ -69,9 +184,6 @@ class ManagerBase {
       Active: false,
       GameFound: false,
     };
-
-    // Logger in order to communicate with CookieButler
-    this.CBLogger = CookieButlerLogger;
 
     // Ensure that the game is loaded
     if (!window.Game) {
@@ -117,14 +229,21 @@ class ManagerBase {
   Restart() {
     console.log(this.Status.Name, "Didn' implement Restart()");
   }
+
+  FillSettings(settings) {
+    Object.entries(settings).forEach(([key, value]) => {
+      if (!this.Settings[key]) {
+        this.Settings = value;
+      }
+    });
+  }
 }
 
 class RepeatingManager extends ManagerBase {
-  constructor(name, settings, interval_ms, CookieButlerLogger) {
-    super(name, settings, CookieButlerLogger);
+  constructor(name, settings, interval_ms) {
+    super(name, settings);
 
     this.Settings.Interval_ms = interval_ms;
-
     this.Status.IntervalIdentifier = null;
   }
 
@@ -133,14 +252,14 @@ class RepeatingManager extends ManagerBase {
       if (this.Status.IntervalIdentifier === null) {
         this.ScheduleCheckFunction();
 
-        this.CBLogger.Update(
+        window.CBLogger.Update(
           this.Status.Name + "::Activate",
           "Activated",
           this.Status.IntervalIdentifier
         );
       } else {
         // This is a bug
-        this.CBLogger.Update(
+        window.CBLogger.Update(
           this.Status.Name + "::Activate",
           "Bug! this.Status.IntervalIdentifier not null, but manager is set non active! Trying to recover",
           this.Status.IntervalIdentifier
@@ -149,13 +268,13 @@ class RepeatingManager extends ManagerBase {
         // Try to recover and retry
         this.Status.IntervalIdentifier = null;
         if (this.Activate()) {
-          this.CBLogger.Update(
+          window.CBLogger.Update(
             this.Status.Name + "::Activate",
             "Bug seems to have recovered",
             this.Status.IntervalIdentifier
           );
         } else {
-          this.CBLogger.Update(
+          window.CBLogger.Update(
             this.Status.Name + "::Activate",
             "Bug seems to NOT have recovered",
             this.Status.IntervalIdentifier
@@ -165,14 +284,14 @@ class RepeatingManager extends ManagerBase {
       }
     } else {
       if (this.Status.IntervalIdentifier !== null) {
-        this.CBLogger.Update(
+        window.CBLogger.Update(
           this.Status.Name + "::Activate",
           "Already active!",
           this.Status.Active
         );
       } else {
         // This is a bug
-        this.CBLogger.Update(
+        window.CBLogger.Update(
           this.Status.Name + "::Activate",
           "Bug! this.Status.IntervalIdentifier null, but manager is set active! Trying to recover",
           this.Status.IntervalIdentifier
@@ -181,13 +300,13 @@ class RepeatingManager extends ManagerBase {
         // Try to recover and retry
         this.Status.Active = false;
         if (this.Activate()) {
-          this.CBLogger.Update(
+          window.CBLogger.Update(
             this.Status.Name + "::Activate",
             "Bug seems to have recovered",
             this.Status.IntervalIdentifier
           );
         } else {
-          this.CBLogger.Update(
+          window.CBLogger.Update(
             this.Status.Name + "::Activate",
             "Bug seems to NOT have recovered",
             this.Status.IntervalIdentifier
@@ -204,7 +323,7 @@ class RepeatingManager extends ManagerBase {
     if (this.Status.Active) {
       if (this.Status.IntervalIdentifier === null) {
         // This is a bug
-        this.CBLogger.Update(
+        window.CBLogger.Update(
           this.Status.Name + "::Deactivate",
           "Bug! this.Status.IntervalIdentifier null, but manager is set active! Trying to recover",
           this.Status.IntervalIdentifier
@@ -213,13 +332,13 @@ class RepeatingManager extends ManagerBase {
         // Try to recover and retry
         this.Status.Active = false;
         if (this.Deactivate()) {
-          this.CBLogger.Update(
+          window.CBLogger.Update(
             this.Status.Name + "::Deactivate",
             "Bug seems to have recovered",
             this.Status.IntervalIdentifier
           );
         } else {
-          this.CBLogger.Update(
+          window.CBLogger.Update(
             this.Status.Name + "::Deactivate",
             "Bug seems to NOT have recovered",
             this.Status.IntervalIdentifier
@@ -229,7 +348,7 @@ class RepeatingManager extends ManagerBase {
       } else {
         this.AbortCheckFunction();
 
-        this.CBLogger.Update(
+        window.CBLogger.Update(
           this.Status.Name + "::Deactivate",
           "Deactivated",
           this.Status.Active
@@ -237,14 +356,14 @@ class RepeatingManager extends ManagerBase {
       }
     } else {
       if (this.Status.IntervalIdentifier === null) {
-        this.CBLogger.Update(
+        window.CBLogger.Update(
           this.Status.Name + "::Deactivate",
           "Already inactive!",
           this.Status.Active
         );
       } else {
         // This is a bug
-        this.CBLogger.Update(
+        window.CBLogger.Update(
           this.Status.Name + "::Deactivate",
           "Bug! this.Status.IntervalIdentifier not null, but manager is set not active! Trying to recover",
           this.Status.IntervalIdentifier
@@ -253,13 +372,13 @@ class RepeatingManager extends ManagerBase {
         // Try to recover and retry
         this.Status.Active = true;
         if (this.Deactivate()) {
-          this.CBLogger.Update(
+          window.CBLogger.Update(
             this.Status.Name + "::Deactivate",
             "Bug seems to have recovered",
             this.Status.IntervalIdentifier
           );
         } else {
-          this.CBLogger.Update(
+          window.CBLogger.Update(
             this.Status.Name + "::Deactivate",
             "Bug seems to NOT have recovered",
             this.Status.IntervalIdentifier
@@ -305,7 +424,7 @@ class ShimmersManager extends RepeatingManager {
   }
 
   PopShimmer(shimmer) {
-    this.CBLogger.Update(
+    window.CBLogger.Update(
       this.Status.Name + "::PopShimmer",
       "Wrath: " + shimmer.wrath,
       shimmer
@@ -319,7 +438,7 @@ class ShimmersManager extends RepeatingManager {
     let len = elements.length;
     if (len > 0) {
       CBDOMUtilities.ClickDOMElements(elements);
-      this.CBLogger.Update(
+      window.CBLogger.Update(
         this.Status.Name + "::PopAllShimmers",
         len,
         elements
@@ -329,6 +448,16 @@ class ShimmersManager extends RepeatingManager {
 }
 
 class WrinklersManager extends RepeatingManager {
+  constructor(name, settings, interval_ms) {
+    super(name, settings, interval_ms);
+
+    let DefaultSettings = {
+      DesiredWrinklersNumber: 11,
+      PopShinyWrinklers: false,
+    };
+    super.FillSettings(DefaultSettings);
+  }
+
   Check() {
     // Manage the number of wrinklers
 
@@ -375,7 +504,7 @@ class WrinklersManager extends RepeatingManager {
   }
 
   PopWrinkler(wrinkler) {
-    this.CBLogger.Update(
+    window.CBLogger.Update(
       this.Status.Name + "::PopWrinkler",
       wrinkler,
       "shiny: " + wrinkler.type
@@ -387,23 +516,26 @@ class WrinklersManager extends RepeatingManager {
 
 class GrimoireManager extends ManagerBase {
   // Checks if we can execute force the hand of fate
-  constructor(name, settings, CookieButlerLogger) {
-    super(name, settings, CookieButlerLogger);
+  constructor(name, settings) {
+    super(name, settings);
     this.Status.TimeoutIdentifier = null;
     this.Status.GameSupportedVersions = [2.022];
 
     this.Grimoire = null;
     this.FindGrimoire();
 
-    this.Settings.DesiredSpellOutcomes = [
-      "click frenzy",
-      "cookie storm",
-      "building special",
-      "cookie storm drop",
-      "free sugar lump",
-      "blood frenzy",
-      "cursed finger",
-    ];
+    let DefaultSettings = {
+      DesiredSpellOutcomes: [
+        "click frenzy",
+        "cookie storm",
+        "building special",
+        "cookie storm drop",
+        "free sugar lump",
+        "blood frenzy",
+        "cursed finger",
+      ],
+    };
+    super.FillSettings(DefaultSettings);
 
     // Since we are exploiting some game's internal logic, ensure we are working with the same game's version
     if (!this.Status.GameSupportedVersions.includes(window.Game.version)) {
@@ -502,7 +634,7 @@ class GrimoireManager extends ManagerBase {
     // Restore the random generator
     Math.seedrandom();
 
-    this.CBLogger.Update(
+    window.CBLogger.Update(
       this.Status.Name + "::SimulateSpell",
       spell,
       spell_result
@@ -525,7 +657,7 @@ class GrimoireManager extends ManagerBase {
       }
     }, 500);
 
-    this.CBLogger.Update(
+    window.CBLogger.Update(
       this.Status.Name + "::CastSpell",
       spell,
       expected_result
@@ -541,7 +673,7 @@ class GrimoireManager extends ManagerBase {
       that.Plan();
     }, ms);
 
-    this.CBLogger.Update(
+    window.CBLogger.Update(
       this.Status.Name + "::Replan",
       this.Status.TimeoutIdentifier,
       ms
@@ -553,7 +685,7 @@ class GrimoireManager extends ManagerBase {
     if (this.Grimoire == null) {
       // There is no grimoire, try to find it and try again next second
       this.FindGrimoire();
-      this.CBLogger.Update(
+      window.CBLogger.Update(
         this.Status.Name + "::Plan",
         "No grimoire!",
         this.Grimoire
@@ -565,7 +697,7 @@ class GrimoireManager extends ManagerBase {
 
     if (ms_to_mana > 0) {
       // We can't cast the spell, it doesn't make sense to figure out what to do
-      this.CBLogger.Update(
+      window.CBLogger.Update(
         this.Status.Name + "::Plan",
         "Mana not full!",
         ms_to_mana
@@ -608,7 +740,7 @@ class GrimoireManager extends ManagerBase {
   Activate() {
     this.Plan();
     this.Status.Active = true;
-    this.CBLogger.Update(
+    window.CBLogger.Update(
       this.Status.Name + "::Activate",
       "Activated",
       this.Status.Active
@@ -621,7 +753,7 @@ class GrimoireManager extends ManagerBase {
     window.clearTimeout(that.Status.TimeoutIdentifier);
     this.Status.TimeoutIdentifier = null;
     this.Status.Active = false;
-    this.CBLogger.Update(
+    window.CBLogger.Update(
       this.Status.Name + "::Deactivate",
       "Deactivated",
       this.Status.Active
@@ -632,7 +764,7 @@ class GrimoireManager extends ManagerBase {
   Restart() {
     this.Deactivate();
     this.Activate();
-    this.CBLogger.Update(
+    window.CBLogger.Update(
       this.Status.Name + "::Restart",
       "Restarted",
       this.Status.Active
@@ -642,17 +774,9 @@ class GrimoireManager extends ManagerBase {
 }
 
 class AutoClickerChecker extends RepeatingManager {
-  constructor(
-    name,
-    settings,
-    interval_ms,
-    CookieButlerLogger,
-    Autoclicker,
-    Buffname
-  ) {
-    super(name, settings, interval_ms, CookieButlerLogger);
+  constructor(name, settings, interval_ms, Buffname) {
+    super(name, settings, interval_ms);
 
-    this.AutoClicker = Autoclicker;
     this.Settings.BuffName = Buffname;
   }
 
@@ -661,9 +785,9 @@ class AutoClickerChecker extends RepeatingManager {
 
     // Enable autoclicker while `Click frenzy` buff is enabled
     if (window.Game.hasBuff(that.Settings.BuffName)) {
-      this.AutoClicker.Demand(this.Status.Name);
+      window.CBAutoClicker.Demand(this.Status.Name);
     } else {
-      this.AutoClicker.Retreat(this.Status.Name);
+      window.CBAutoClicker.Retreat(this.Status.Name);
     }
   }
 }
@@ -755,12 +879,15 @@ class CookieMonsterConnector extends AutoBuyerGameConnector {
 }
 
 class AutoBuyer extends RepeatingManager {
-  constructor(name, settings, interval_ms, CookieButlerLogger) {
-    super(name, settings, interval_ms, CookieButlerLogger);
+  constructor(name, settings, interval_ms) {
+    super(name, settings, interval_ms);
 
     this.GameConnector = null;
-    this.Settings.UseAdapterThreshold = true;
-    this.Settings.BuyInterval_ms = 300;
+    let DefaultSettings = {
+      UseAdapterThreshold: true,
+      BuyInterval_ms: 300,
+    };
+    super.FillSettings(DefaultSettings);
   }
 
   Activate() {
@@ -768,7 +895,7 @@ class AutoBuyer extends RepeatingManager {
     this.GameConnector = new CookieMonsterConnector();
 
     if (!this.GameConnector.valid) {
-      this.CBLogger.Update(
+      window.CBLogger.Update(
         this.Name + "::Activate",
         "CookieMonster not found!",
         this.CM
@@ -845,221 +972,133 @@ class AutoBuyer extends RepeatingManager {
   }
 }
 
-class Logger {
-  constructor(Logginglevel) {
-    this.Historic = [];
+var CB = {
+  Settings: {
+    DefaultLoggingLevel: 0,
+    Managers: {
+      Wrinklers: {
+        Activate: true,
+        CustomSettings: {},
+      },
+      Shimmers: {
+        Activate: true,
+        CustomSettings: {},
+      },
+      ClickFrenzy: {
+        Activate: true,
+        CustomSettings: {},
+      },
+      Dragonflight: {
+        Activate: true,
+        CustomSettings: {},
+      },
+      ElderFrenzy: {
+        Activate: true,
+        CustomSettings: {},
+      },
+      CursedFinger: {
+        Activate: true,
+        CustomSettings: {},
+      },
+      Grimoire: {
+        Activate: true,
+        CustomSettings: {},
+      },
+      AutoBuyer: {
+        Activate: true,
+        CustomSettings: {},
+      },
+    },
+  },
 
-    this.Settings = {
-      LoggingLevel: Logginglevel,
-    };
-  }
+  Managers: {
+    Wrinklers: new WrinklersManager(
+      "wrinklers_manager",
+      this.Settings.Managers.Wrinklers.CustomSettings,
+      5000
+    ),
+    Shimmers: new ShimmersManager(
+      "shimmers_manager",
+      this.Settings.Managers.Shimmers.CustomSettings,
+      800
+    ),
+    ClickFrenzy: new AutoClickerChecker(
+      "click_frenzy_checker",
+      this.Settings.Managers.Wrinklers.CustomSettings,
+      1000,
+      "Click frenzy"
+    ),
+    Dragonflight: new AutoClickerChecker(
+      "dragonflight_checker",
+      this.Settings.Managers.Dragonflight.CustomSettings,
+      1000,
+      "Dragonflight"
+    ),
+    ElderFrenzy: new AutoClickerChecker(
+      "elder_frenzy_checker",
+      this.Settings.Managers.ElderFrenzy.CustomSettings,
+      1000,
+      "Elder frenzy"
+    ),
+    CursedFinger: new AutoClickerChecker(
+      "cursed_finger_checker",
+      this.Settings.Managers.CursedFinger.CustomSettings,
+      1000,
+      "Cursed finger"
+    ),
 
-  Update(action, result, notes) {
-    // Save a datapoint in the history
-    this.Historic.push({
-      Time_ms: Date.now(),
-      action: action,
-      result: result,
-      notes: notes,
-    });
+    Grimoire: new GrimoireManager(
+      "grimoire_manager",
+      this.Settings.Managers.Grimoire.CustomSettings
+    ),
 
-    if (this.Settings.LoggingLevel > 0) {
-      console.log(action, result, notes);
-    }
-  }
+    AutoBuyer: new AutoBuyer(
+      "autobuyer_manager",
+      this.Settings.Managers.AutoBuyer.CustomSettings,
+      3000
+    ),
+  },
 
-  Reset() {
-    this.Historic = {};
-  }
-
-  ToJson() {
-    console.log(JSON.stringify(this.Historic));
-  }
-}
-
-class AutoClicker {
-  constructor(CookieButlerLogger) {
-    this.Requests = {
-      at_least_one_type: 0,
-    };
-
-    this.BigCookieClickEventIdentifier = null;
-
-    this.Settings = {
-      ClickFrequency: 100, // Clicks per second (Hz)
-    };
-
-    this.CBLogger = CookieButlerLogger;
-    this.Status = {
-      StartedAutomatically: false,
-      Clicking: false,
-    };
-  }
-
-  ClickBigCookie() {
-    // Click the big cookie once
-    CBDOMUtilities.ClickDOMElement(CBDOMUtilities.GetDOMElement("bigCookie"));
-  }
-
-  Start() {
-    let that = this;
-
-    // Start the autoclicker
-    const clicking_period = 1000 / this.Settings.ClickFrequency;
-    this.BigCookieClickEventIdentifier = window.setInterval(function () {
-      that.ClickBigCookie();
-    }, clicking_period);
-    this.CBLogger.Update("Autoclicker::Start", clicking_period, this.Requests);
-
-    this.Status.Clicking = true;
-  }
-
-  Stop() {
-    // Stop the autoclicker
-    window.clearInterval(this.BigCookieClickEventIdentifier);
-    this.BigCookieClickEventIdentifier = null;
-    this.CBLogger.Update(
-      "Autoclicker::Stop",
-      this.BigCookieClickEventIdentifier,
-      this.Requests
-    );
-    this.Status.Clicking = false;
-  }
-
-  n_demands() {
-    const count = (obj) => Object.values(obj).reduce((a, b) => a + b);
-
-    return count(this.Requests);
-  }
-
-  SmartStart() {
-    // Start the autoclicker only if there is at least one request
-    if (this.n_demands() > 0) {
-      if (this.BigCookieClickEventIdentifier === null) {
-        this.Start();
-        this.Status.StartedAutomatically = true;
-      }
-    } else {
-      if (this.BigCookieClickEventIdentifier !== null) {
-        if (this.Status.StartedAutomatically == true) {
-          this.Stop();
-          this.Status.StartedAutomatically = false;
+  Activate: function () {
+    // Activate all the Managers
+    Object.entries(this.Managers).forEach(([name, manager]) => {
+      if (this.Settings.Managers[name].Activate) {
+        if (manager.Activate()) {
+          window.CBLogger.Update("Activated", name, manager.Status);
+        } else {
+          window.CBLogger.Update(
+            "Activated",
+            "Failed to activate " + name,
+            manager.Status
+          );
         }
       }
-    }
-  }
-
-  Demand(demander) {
-    this.Requests[demander] = 1;
-    this.SmartStart();
-  }
-
-  Retreat(retreater) {
-    this.Requests[retreater] = 0;
-    this.SmartStart();
-  }
-}
-
-class CookieButler {
-  constructor() {
-    this.Settings = {
-      DefaultLoggingLevel: 0,
-    };
-
-    this.Stats = new Logger(this.Settings.DefaultLoggingLevel);
-
-    this.AutoClickerInstance = new AutoClicker(this.Stats);
-
-    this.Managers = {
-      Wrinklers: new WrinklersManager(
-        "wrinklers_manager",
-        {
-          DesiredWrinklersNumber: 8,
-          PopShinyWrinklers: false,
-        },
-        5000,
-        this.Stats
-      ),
-      Shimmers: new ShimmersManager("shimmers_manager", {}, 800, this.Stats),
-      ClickFrenzy: new AutoClickerChecker(
-        "click_frenzy_checker",
-        {},
-        1000,
-        this.Stats,
-        this.AutoClickerInstance,
-        "Click frenzy"
-      ),
-      Dragonflight: new AutoClickerChecker(
-        "dragonflight_checker",
-        {},
-        1000,
-        this.Stats,
-        this.AutoClickerInstance,
-        "Dragonflight"
-      ),
-      ElderFrenzy: new AutoClickerChecker(
-        "elder_frenzy_checker",
-        {},
-        1000,
-        this.Stats,
-        this.AutoClickerInstance,
-        "Elder frenzy"
-      ),
-      CursedFinger: new AutoClickerChecker(
-        "cursed_finger_checker",
-        {},
-        1000,
-        this.Stats,
-        this.AutoClickerInstance,
-        "Cursed finger"
-      ),
-
-      Grimoire: new GrimoireManager("grimoire_manager", {}, this.Stats),
-
-      AutoBuyer: new AutoBuyer("autobuyer_manager", {}, 3000, this.Stats),
-    };
-
-    this.Activate();
+    }, this);
 
     console.log("Thank you for using CookieButler! Visit the homepage at:");
     console.log("https://github.com/iacosite/cookie_butler");
-  }
+  },
 
-  Activate() {
-    // Activate all the Managers
-    Object.entries(this.Managers).forEach(([name, manager]) => {
-      if (manager.Activate()) {
-        this.Stats.Update("Activated", name, manager.Status);
-      } else {
-        this.Stats.Update(
-          "Activated",
-          "Failed to activate " + name,
-          manager.Status
-        );
-      }
-    }, this);
-  }
-
-  Deactivate() {
+  Deactivate: function () {
     // Deactivate all the Managers
     Object.entries(this.Managers).forEach(([name, manager]) => {
       if (manager.Deactivate()) {
-        this.Stats.Update("Deactivated", name, manager.Status);
+        window.CBLogger.Update("Deactivated", name, manager.Status);
       } else {
         // There has been an error, retry
-        this.Stats.Update(
+        window.CBLogger.Update(
           "Deactivated",
           "Failed to deactivate " + name,
           manager.Status
         );
       }
     }, this);
-  }
+  },
 
-  Restart() {
+  Restart: function () {
     this.Deactivate();
     this.Activate();
-  }
-}
+  },
+};
 
-var CB = new CookieButler();
+CB.Activate();
