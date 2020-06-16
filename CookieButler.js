@@ -1,5 +1,11 @@
 /*jshint esversion: 6 */
 class CBDOMUtilities {
+  static Settings = {
+    TimeBetweenClicks_ms: 5,
+  };
+
+  static last_click = 0;
+
   static GetDOMElement(element_id) {
     return document.getElementById(element_id);
   }
@@ -10,9 +16,16 @@ class CBDOMUtilities {
 
   static ClickDOMElement(dom_element) {
     // Implements natural mouse click
-    // dom_element.dispatchEvent(new MouseEvent("mousedown"), {});
-    // dom_element.dispatchEvent(new MouseEvent("mouseup"), {});
-    dom_element.dispatchEvent(new MouseEvent("click"), {});
+
+    CBDOMUtilities.last_click =
+      Math.max(CBDOMUtilities.last_click, Date.now()) +
+      CBDOMUtilities.Settings.TimeBetweenClicks_ms;
+
+    document.setTimeout(function () {
+      // dom_element.dispatchEvent(new MouseEvent("mousedown"), {});
+      // dom_element.dispatchEvent(new MouseEvent("mouseup"), {});
+      dom_element.dispatchEvent(new MouseEvent("click"), {});
+    }, this.last_click - Date.now);
   }
 
   static ClickDOMElements(elements) {
