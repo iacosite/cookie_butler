@@ -528,7 +528,9 @@ class GrimoireManager extends ManagerBase {
       // Try to cast another spell
       spell = this.Grimoire.spells["conjure baked goods"];
       result = this.SimulateSpell(spell);
-      if (result.win) {
+      let any_wrinkler = window.Game.wrinklers.some((w) => w.close == 1);
+
+      if (result.win || !any_wrinkler) {
         this.CastSpell(spell);
       } else {
         // Bad luck.
