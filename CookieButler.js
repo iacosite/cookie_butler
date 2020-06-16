@@ -993,7 +993,7 @@ class CookieButler {
       AutoBuyer: new AutoBuyer("autobuyer_manager", {}, 3000, this.Stats),
     };
 
-    // this.Activate();
+    this.Activate();
 
     console.log("Thank you for using CookieButler! Visit the homepage at:");
     console.log("https://github.com/iacosite/cookie_butler");
@@ -1037,7 +1037,3 @@ class CookieButler {
 }
 
 var CB = new CookieButler();
-window.Game.LoadMod(
-  "https://aktanusa.github.io/CookieMonster/CookieMonster.js"
-);
-// var buyer = new AutoBuyer("asd", {}, 1000, CB.Stats);
