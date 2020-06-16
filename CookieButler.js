@@ -192,6 +192,7 @@ class RepeatingManager extends ManagerBase {
         }
       } else {
         this.AbortCheckFunction();
+
         this.CBLogger.Update(
           this.Status.Name + "::Deactivate",
           "Deactivated",
