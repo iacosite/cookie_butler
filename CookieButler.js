@@ -654,6 +654,10 @@ class AutoClicker {
     };
 
     this.CBLogger = CookieButlerLogger;
+    this.Status = {
+      StartedAutomatically: false,
+      Clicking: false,
+    };
   }
 
   ClickBigCookie() {
@@ -670,6 +674,8 @@ class AutoClicker {
       that.ClickBigCookie();
     }, clicking_period);
     this.CBLogger.Update("Autoclicker::Start", clicking_period, this.Requests);
+
+    this.Status.Clicking = true;
   }
 
   Stop() {
@@ -681,6 +687,7 @@ class AutoClicker {
       this.BigCookieClickEventIdentifier,
       this.Requests
     );
+    this.Status.Clicking = false;
   }
 
   n_demands() {
@@ -694,10 +701,14 @@ class AutoClicker {
     if (this.n_demands() > 0) {
       if (this.BigCookieClickEventIdentifier === null) {
         this.Start();
+        this.Status.StartedAutomatically = true;
       }
     } else {
       if (this.BigCookieClickEventIdentifier !== null) {
-        this.Stop();
+        if (this.Status.StartedAutomatically == true) {
+          this.Stop();
+          this.Status.StartedAutomatically = false;
+        }
       }
     }
   }
