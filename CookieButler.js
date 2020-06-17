@@ -423,7 +423,7 @@ class RepeatingManager extends ManagerBase {
 
 class ShimmersManager extends RepeatingManager {
   Check() {
-    this.PopAllShimmers();
+    this.PopAllShimmersByClicking();
   }
 
   PopAllShimmers() {
