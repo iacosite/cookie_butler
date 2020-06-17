@@ -811,6 +811,8 @@ class AutoBuyerGameConnector {
   GetDesiredBankAmount() {
     // Return the desired amount of cookies in the bank
   }
+
+  PaybackPeriod(item) {}
 }
 
 class CookieMonsterConnector extends AutoBuyerGameConnector {
@@ -881,6 +883,18 @@ class CookieMonsterConnector extends AutoBuyerGameConnector {
   GetDesiredBankAmount() {
     return this.CM.Cache.LuckyFrenzy;
   }
+
+  PaybackPeriod(item) {
+    if (this.CM.Cache.Upgrades[item.name]) {
+      return this.CM.Cache.Upgrades[item.name].pp;
+    }
+
+    if (this.CM.Cache.Objects[item.name]) {
+      return this.CM.Cache.Objects[item.name].pp;
+    }
+
+    return Infinity;
+  }
 }
 
 class AutoBuyer extends RepeatingManager {
@@ -890,7 +904,7 @@ class AutoBuyer extends RepeatingManager {
     this.GameConnector = null;
     let DefaultSettings = {
       UseAdapterThreshold: true,
-      BuyInterval_ms: 300,
+      BuyInterval_ms: 50,
       MaxWaitTimeToBuy_s: 2160000, // 25days
     };
     super.FillSettings(DefaultSettings);
@@ -949,14 +963,27 @@ class AutoBuyer extends RepeatingManager {
       // Buy it and check again soon
       this.Buy(bestItem);
       this.RescheduleCheckFunction(this.Settings.BuyInterval_ms);
-    } else {
-      if (time_until_afford > this.Settings.MaxWaitTimeToBuy_s) {
-        // The item is too expensive, add it to the list of too expensive items
-        this.Status.TooExpensiveItems.push(bestItem);
-      }
-      // Check again in a bit
-      this.RescheduleCheckFunction(this.Settings.Interval_ms);
+      return;
     }
+
+    if (
+      this.HaveMoneyInTheBank(bestItem) &&
+      this.GameConnector.PaybackPeriod(bestItem) < this.TimeUntilBankThreshold()
+    ) {
+      // Buy it anyway, it will save us time
+      this.Buy(bestItem);
+      this.RescheduleCheckFunction(this.Settings.BuyInterval_ms);
+      return;
+    }
+
+    // We need to save money
+    if (time_until_afford > this.Settings.MaxWaitTimeToBuy_s) {
+      // The item is too expensive, add it to the list of too expensive items and ignore it next time
+      this.Status.TooExpensiveItems.push(bestItem);
+    }
+
+    // Check again in a bit
+    this.RescheduleCheckFunction(this.Settings.Interval_ms);
   }
 
   RescheduleCheckFunction(interval_ms) {
@@ -968,6 +995,10 @@ class AutoBuyer extends RepeatingManager {
     this.Status.WillFireAt = new Date(Date.now() + interval_ms).toString();
   }
 
+  HaveMoneyInTheBank(bestItem, quantity) {
+    return bestItem.getPrice(quantity) < window.Game.cookies;
+  }
+
   TimeUntilCanAfford(bestItem, quantity) {
     let target_amount = window.Game.cookies;
     if (this.Settings.UseAdapterThreshold) {
@@ -976,6 +1007,20 @@ class AutoBuyer extends RepeatingManager {
 
     let cps = window.Game.cookiesPs;
     let cookies_missing = bestItem.getPrice(quantity) - target_amount;
+
+    return Math.max(cookies_missing / cps, 0);
+  }
+
+  TimeUntilBankThreshold() {
+    let target_amount = 0;
+
+    if (this.Settings.UseAdapterThreshold) {
+      target_amount = this.GameConnector.GetDesiredBankAmount();
+    }
+
+    let cps = window.Game.cookiesPs;
+
+    let cookies_missing = target_amount - window.Game.cookies;
 
     return Math.max(cookies_missing / cps, 0);
   }
