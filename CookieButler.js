@@ -25,8 +25,8 @@ var CBDOMUtilities = {
 
     let that = this;
     window.setTimeout(function () {
-      dom_element.dispatchEvent(new MouseEvent("mousedown"), {});
-      dom_element.dispatchEvent(new MouseEvent("mouseup"), {});
+      // dom_element.dispatchEvent(new MouseEvent("mousedown"), {});
+      // dom_element.dispatchEvent(new MouseEvent("mouseup"), {});
       dom_element.dispatchEvent(new MouseEvent("click"), {});
     }, that.Status.LastClick - Date.now);
   },
