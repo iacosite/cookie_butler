@@ -1,10 +1,12 @@
 /*jshint esversion: 6 */
 var CBDOMUtilities = {
   Settings: {
-    TimeBetweenClicks_ms: 5,
+    TimeBetweenClicks_ms: 10,
   },
 
-  last_click: 0,
+  Status: {
+    LastClick: 0,
+  },
 
   GetDOMElement: function (element_id) {
     return document.getElementById(element_id);
@@ -17,15 +19,16 @@ var CBDOMUtilities = {
   ClickDOMElement: function (dom_element) {
     // Implements natural mouse click
 
-    this.last_click =
-      Math.max(this.last_click, Date.now()) +
-      this.GetSettings().TimeBetweenClicks_ms;
+    this.Status.LastClick =
+      Math.max(this.Status.LastClick, Date.now()) +
+      this.Settings.TimeBetweenClicks_ms;
 
+    let that = this;
     window.setTimeout(function () {
       // dom_element.dispatchEvent(new MouseEvent("mousedown"), {});
       // dom_element.dispatchEvent(new MouseEvent("mouseup"), {});
       dom_element.dispatchEvent(new MouseEvent("click"), {});
-    }, this.last_click - Date.now);
+    }, that.Status.LastClick - Date.now);
   },
 
   ClickDOMElements: function (elements) {
@@ -233,7 +236,7 @@ class ManagerBase {
   FillSettings(settings) {
     Object.entries(settings).forEach(([key, value]) => {
       if (!this.Settings[key]) {
-        this.Settings = value;
+        this.Settings[key] = value;
       }
     });
   }
@@ -711,7 +714,7 @@ class GrimoireManager extends ManagerBase {
     // Find which is the best spell to cast
     let result = this.SimulateSpell(spell);
 
-    if (result.outcome in this.Settings.DesiredSpellOutcomes) {
+    if (this.Settings.DesiredSpellOutcomes.includes(result.outcome)) {
       // We can cast it! (or at least cast it whenever we can)
       this.CastSpell(spell);
     } else {
@@ -793,12 +796,12 @@ class AutoClickerChecker extends RepeatingManager {
 }
 
 class AutoBuyerGameConnector {
-  findBestItemFunc() {
-    let bestItem = this.FindBestItem();
+  findBestItemFunc(items_to_ignore) {
+    let bestItem = this.FindBestItem(items_to_ignore);
     return this.ToCookieClickerItem(bestItem);
   }
 
-  FindBestItem() {}
+  FindBestItem(items_to_ignore) {}
 
   ToCookieClickerItem(item) {
     // This function converts the item returned from `this.FindBestItem` to the Object/Upgrade object from CookieClicker.
@@ -821,7 +824,7 @@ class CookieMonsterConnector extends AutoBuyerGameConnector {
     }
   }
 
-  FindBestItem() {
+  FindBestItem(items_to_ignore) {
     if (!this.valid) {
       return null;
     }
@@ -831,11 +834,12 @@ class CookieMonsterConnector extends AutoBuyerGameConnector {
     Object.keys(this.CM.Cache.Objects).forEach((currBuilding) => {
       if (
         this.CM.Cache.Objects[currBuilding].pp <
-        this.CM.Cache.Objects[bestBuilding].pp
+          this.CM.Cache.Objects[bestBuilding].pp &&
+        !items_to_ignore.includes(this.ToCookieClickerItem(currBuilding))
       ) {
         bestBuilding = currBuilding;
       }
-    });
+    }, this);
 
     let bestUpgrade = Object.values(window.Game.UpgradesInStore)[0].name;
     Object.values(window.Game.UpgradesInStore).forEach((currUpgrade) => {
@@ -845,11 +849,12 @@ class CookieMonsterConnector extends AutoBuyerGameConnector {
 
       if (
         this.CM.Cache.Upgrades[currUpgrade.name].pp <
-        this.CM.Cache.Upgrades[bestUpgrade].pp
+          this.CM.Cache.Upgrades[bestUpgrade].pp &&
+        !items_to_ignore.includes(this.ToCookieClickerItem(currUpgrade.name))
       ) {
         bestUpgrade = currUpgrade.name;
       }
-    });
+    }, this);
 
     if (
       this.CM.Cache.Upgrades[bestUpgrade].pp <
@@ -886,8 +891,12 @@ class AutoBuyer extends RepeatingManager {
     let DefaultSettings = {
       UseAdapterThreshold: true,
       BuyInterval_ms: 300,
+      MaxWaitTimeToBuy_s: 2160000, // 25days
     };
     super.FillSettings(DefaultSettings);
+
+    this.Status.WillFireAt = null;
+    this.Status.TooExpensiveItems = [];
   }
 
   Activate() {
@@ -916,7 +925,7 @@ class AutoBuyer extends RepeatingManager {
   }
 
   ScheduleCheckFunction() {
-    this.Reschedule(10);
+    this.RescheduleCheckFunction(10);
     this.Status.Active = true;
   }
 
@@ -928,35 +937,47 @@ class AutoBuyer extends RepeatingManager {
   }
 
   Check() {
-    let bestItem = this.GameConnector.findBestItemFunc();
+    this.RefreshExpensiveItems();
 
-    if (this.CanAfford(bestItem)) {
+    let bestItem = this.GameConnector.findBestItemFunc(
+      this.Status.TooExpensiveItems
+    );
+
+    let time_until_afford = this.TimeUntilCanAfford(bestItem, 1);
+
+    if (time_until_afford == 0) {
       // Buy it and check again soon
       this.Buy(bestItem);
-      this.Reschedule(this.Settings.BuyInterval_ms);
+      this.RescheduleCheckFunction(this.Settings.BuyInterval_ms);
     } else {
+      if (time_until_afford > this.Settings.MaxWaitTimeToBuy_s) {
+        // The item is too expensive, add it to the list of too expensive items
+        this.Status.TooExpensiveItems.push(bestItem);
+      }
       // Check again in a bit
-      this.Reschedule(this.Settings.Interval_ms);
+      this.RescheduleCheckFunction(this.Settings.Interval_ms);
     }
   }
 
-  Reschedule(interval_ms) {
+  RescheduleCheckFunction(interval_ms) {
     // Reschedule the Check() function at at a definite time
     let that = this;
     this.Status.IntervalIdentifier = window.setTimeout(function () {
       that.Check();
     }, interval_ms);
+    this.Status.WillFireAt = new Date(Date.now() + interval_ms).toString();
   }
 
-  CanAfford(bestItem) {
+  TimeUntilCanAfford(bestItem, quantity) {
+    let target_amount = window.Game.cookies;
     if (this.Settings.UseAdapterThreshold) {
-      return (
-        window.Game.cookies - bestItem.getPrice(1) >
-        this.GameConnector.GetDesiredBankAmount()
-      );
-    } else {
-      return bestItem.getPrice(1) < window.Game.cookies;
+      target_amount -= this.GameConnector.GetDesiredBankAmount();
     }
+
+    let cps = window.Game.cookiesPs;
+    let cookies_missing = bestItem.getPrice(quantity) - target_amount;
+
+    return Math.max(cookies_missing / cps, 0);
   }
 
   Buy(bestItem) {
@@ -969,6 +990,18 @@ class AutoBuyer extends RepeatingManager {
       dom_item = CBDOMUtilities.GetUpgradeDOMElement(bestItem);
     }
     CBDOMUtilities.ClickDOMElement(dom_item);
+  }
+
+  RefreshExpensiveItems() {
+    let new_list = [];
+
+    this.Status.TooExpensiveItems.forEach((item) => {
+      if (this.TimeUntilCanAfford(item, 1) > this.Settings.MaxWaitTimeToBuy_s) {
+        new_list.push(item);
+      }
+    }, this);
+
+    this.Status.TooExpensiveItems = new_list;
   }
 }
 
@@ -1010,95 +1043,94 @@ var CB = {
       },
     },
   },
+};
+CB.Managers = {
+  Wrinklers: new WrinklersManager(
+    "wrinklers_manager",
+    CB.Settings.Managers.Wrinklers.CustomSettings,
+    5000
+  ),
+  Shimmers: new ShimmersManager(
+    "shimmers_manager",
+    CB.Settings.Managers.Shimmers.CustomSettings,
+    800
+  ),
+  ClickFrenzy: new AutoClickerChecker(
+    "click_frenzy_checker",
+    CB.Settings.Managers.Wrinklers.CustomSettings,
+    1000,
+    "Click frenzy"
+  ),
+  Dragonflight: new AutoClickerChecker(
+    "dragonflight_checker",
+    CB.Settings.Managers.Dragonflight.CustomSettings,
+    1000,
+    "Dragonflight"
+  ),
+  ElderFrenzy: new AutoClickerChecker(
+    "elder_frenzy_checker",
+    CB.Settings.Managers.ElderFrenzy.CustomSettings,
+    1000,
+    "Elder frenzy"
+  ),
+  CursedFinger: new AutoClickerChecker(
+    "cursed_finger_checker",
+    CB.Settings.Managers.CursedFinger.CustomSettings,
+    1000,
+    "Cursed finger"
+  ),
 
-  Managers: {
-    Wrinklers: new WrinklersManager(
-      "wrinklers_manager",
-      this.Settings.Managers.Wrinklers.CustomSettings,
-      5000
-    ),
-    Shimmers: new ShimmersManager(
-      "shimmers_manager",
-      this.Settings.Managers.Shimmers.CustomSettings,
-      800
-    ),
-    ClickFrenzy: new AutoClickerChecker(
-      "click_frenzy_checker",
-      this.Settings.Managers.Wrinklers.CustomSettings,
-      1000,
-      "Click frenzy"
-    ),
-    Dragonflight: new AutoClickerChecker(
-      "dragonflight_checker",
-      this.Settings.Managers.Dragonflight.CustomSettings,
-      1000,
-      "Dragonflight"
-    ),
-    ElderFrenzy: new AutoClickerChecker(
-      "elder_frenzy_checker",
-      this.Settings.Managers.ElderFrenzy.CustomSettings,
-      1000,
-      "Elder frenzy"
-    ),
-    CursedFinger: new AutoClickerChecker(
-      "cursed_finger_checker",
-      this.Settings.Managers.CursedFinger.CustomSettings,
-      1000,
-      "Cursed finger"
-    ),
+  Grimoire: new GrimoireManager(
+    "grimoire_manager",
+    CB.Settings.Managers.Grimoire.CustomSettings
+  ),
 
-    Grimoire: new GrimoireManager(
-      "grimoire_manager",
-      this.Settings.Managers.Grimoire.CustomSettings
-    ),
+  AutoBuyer: new AutoBuyer(
+    "autobuyer_manager",
+    CB.Settings.Managers.AutoBuyer.CustomSettings,
+    3000
+  ),
+};
 
-    AutoBuyer: new AutoBuyer(
-      "autobuyer_manager",
-      this.Settings.Managers.AutoBuyer.CustomSettings,
-      3000
-    ),
-  },
-
-  Activate: function () {
-    // Activate all the Managers
-    Object.entries(this.Managers).forEach(([name, manager]) => {
-      if (this.Settings.Managers[name].Activate) {
-        if (manager.Activate()) {
-          window.CBLogger.Update("Activated", name, manager.Status);
-        } else {
-          window.CBLogger.Update(
-            "Activated",
-            "Failed to activate " + name,
-            manager.Status
-          );
-        }
-      }
-    }, this);
-
-    console.log("Thank you for using CookieButler! Visit the homepage at:");
-    console.log("https://github.com/iacosite/cookie_butler");
-  },
-
-  Deactivate: function () {
-    // Deactivate all the Managers
-    Object.entries(this.Managers).forEach(([name, manager]) => {
-      if (manager.Deactivate()) {
-        window.CBLogger.Update("Deactivated", name, manager.Status);
+CB.Activate = function () {
+  // Activate all the Managers
+  Object.entries(CB.Managers).forEach(([name, manager]) => {
+    if (CB.Settings.Managers[name].Activate) {
+      if (manager.Activate()) {
+        window.CBLogger.Update("Activated", name, manager.Status);
       } else {
-        // There has been an error, retry
         window.CBLogger.Update(
-          "Deactivated",
-          "Failed to deactivate " + name,
+          "Activated",
+          "Failed to activate " + name,
           manager.Status
         );
       }
-    }, this);
-  },
+    }
+  });
 
-  Restart: function () {
-    this.Deactivate();
-    this.Activate();
-  },
+  console.log("Thank you for using CookieButler! Visit the homepage at:");
+  console.log("https://github.com/iacosite/cookie_butler");
+};
+
+CB.Deactivate = function () {
+  // Deactivate all the Managers
+  Object.entries(this.Managers).forEach(([name, manager]) => {
+    if (manager.Deactivate()) {
+      window.CBLogger.Update("Deactivated", name, manager.Status);
+    } else {
+      // There has been an error, retry
+      window.CBLogger.Update(
+        "Deactivated",
+        "Failed to deactivate " + name,
+        manager.Status
+      );
+    }
+  }, this);
+};
+
+CB.Restart = function () {
+  this.Deactivate();
+  this.Activate();
 };
 
 CB.Activate();
