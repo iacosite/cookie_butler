@@ -25,8 +25,8 @@ var CBDOMUtilities = {
 
     let that = this;
     window.setTimeout(function () {
-      // dom_element.dispatchEvent(new MouseEvent("mousedown"), {});
-      // dom_element.dispatchEvent(new MouseEvent("mouseup"), {});
+      dom_element.dispatchEvent(new MouseEvent("mousedown"), {});
+      dom_element.dispatchEvent(new MouseEvent("mouseup"), {});
       dom_element.dispatchEvent(new MouseEvent("click"), {});
     }, that.Status.LastClick - Date.now);
   },
@@ -122,10 +122,14 @@ var CBAutoClicker = {
     let that = this;
 
     // Start the autoclicker
-    const clicking_period = 1000 / this.Settings.ClickFrequency;
+    const clicking_period = Math.max(
+      1000 / this.Settings.ClickFrequency,
+      CBDOMUtilities.Settings.TimeBetweenClicks_ms
+    );
+
     this.BigCookieClickEventIdentifier = window.setInterval(function () {
       that.ClickBigCookie();
-    }, clicking_period);
+    }, Math.max(clicking_period, CBDOMUtilities.Settings.TimeBetweenClicks_ms));
     window.CBLogger.Update(
       "Autoclicker::Start",
       clicking_period,
