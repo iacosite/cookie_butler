@@ -80,8 +80,12 @@ You can have it buy sets of 1/10/100 buildings at once just by toggling the game
 
 
 
-# Sponsor [:beer:](https://www.paypal.me/iacosite/10USD)
-If you liked CookieButler and would like to contibute, either get involved or buy me a beer! -> [:beer:](https://www.paypal.me/iacosite/10USD)   (or a coffee [:coffee:](https://www.paypal.me/iacosite/5USD)   ).
+# Sponsor [:star2:](https://www.paypal.me/iacosite/10USD)
+If you liked CookieButler and would like to contibute, either get involved or buy me a [beer! :beer:](https://www.paypal.me/iacosite/10USD)   (or a [coffee :coffee:](https://www.paypal.me/iacosite/)   ).
 
-You can also give some suggestions (just open an issue) and star this project to give it visibility!
+Other things you can do to help:
+* Star this project on Github!
+* Suggestions are always well accepted! Go to the [Suggestions Section](https://github.com/iacosite/cookie_butler/issues/new/choose) and leave your feedback!
+* Upvote this mod's [reddit post](https://www.reddit.com/r/CookieClicker/comments/h0pb1x/i_developed_a_mod/) to let more people know about it!
+
 Enjoy! :)
