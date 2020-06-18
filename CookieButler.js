@@ -519,9 +519,8 @@ class GrimoireManager extends ManagerBase {
     this.Status.TimeoutIdentifier = null;
     this.Status.GameSupportedVersions = [2.022];
     this.Status.WillFireAt = null;
-
-    this.Grimoire = null;
-    this.FindGrimoire();
+    this.Status.DelayedSpellCastIdentifier = null;
+    this.Status.DelayedSpellCastRequested = false;
 
     let DefaultSettings = {
       DesiredSpellOutcomes: [
@@ -533,8 +532,13 @@ class GrimoireManager extends ManagerBase {
         "blood frenzy",
         "cursed finger",
       ],
+      MinimumBuffMultiplier: 7,
+      DelayedSpellCastWaitingTime_ms: 3000,
     };
     super.FillSettings(DefaultSettings);
+
+    this.Grimoire = null;
+    this.FindGrimoire();
 
     // Since we are exploiting some game's internal logic, ensure we are working with the same game's version
     if (!this.Status.GameSupportedVersions.includes(window.Game.version)) {
@@ -666,6 +670,37 @@ class GrimoireManager extends ManagerBase {
     );
   }
 
+  CastWhenBuffed(spell, expected_result) {
+    // Cast the spell whenever we know the game has a positive buff
+    this.Status.DelayedSpellCastIdentifier = null;
+
+    // Check the game buff status,
+    if (
+      window.Game.cookiesPs / window.Game.unbuffedCps >=
+      this.Settings.MinimumBuffMultiplier
+    ) {
+      // Cast the spell!
+      this.CastSpell(spell, expected_result);
+      this.Status.DelayedSpellCastRequested = false;
+    } else {
+      // The conditions are not right, delay the cast!
+      this.Status.DelayedSpellCastRequested = true;
+      let that = this;
+      this.Status.DelayedSpellCastIdentifier = window.setTimeout(function () {
+        that.CastWhenBuffed(spell, expected_result);
+      }, that.Settings.DelayedSpellCastWaitingTime_ms);
+
+      this.Status.WillFireAt = new Date(
+        Date.now() + this.Settings.DelayedSpellCastWaitingTime_ms
+      ).toString();
+      CBLogger.Update(
+        this.Status.Name + "::CastWhenBuffered",
+        "waiting for buff",
+        this.Status
+      );
+    }
+  }
+
   Replan(ms) {
     // Replan whenever we will have enough mana
     let that = this;
@@ -682,6 +717,12 @@ class GrimoireManager extends ManagerBase {
   }
 
   Plan() {
+    if (this.Status.DelayedSpellCastRequested) {
+      // Replan as we already requested one spell
+      this.Replan(3000);
+      return;
+    }
+
     if (this.Grimoire == null) {
       this.FindGrimoire();
     }
@@ -716,7 +757,7 @@ class GrimoireManager extends ManagerBase {
 
     if (this.Settings.DesiredSpellOutcomes.includes(result.outcome)) {
       // We can cast it! (or at least cast it whenever we can)
-      this.CastSpell(spell, result);
+      this.CastWhenBuffed(spell, result);
     } else {
       // Try to cast another spell
       spell = this.Grimoire.spells["conjure baked goods"];
@@ -725,7 +766,7 @@ class GrimoireManager extends ManagerBase {
       let any_wrinkler = window.Game.wrinklers.some((w) => w.close == 1);
 
       if (result.win || !any_wrinkler) {
-        this.CastSpell(spell, result);
+        this.CastWhenBuffed(spell, result);
       } else {
         // Bad luck.
         // even if `resurrect abomination` fails, it is not a big deal, come on :)
@@ -832,12 +873,20 @@ class CookieMonsterConnector extends AutoBuyerGameConnector {
     }
 
     // Find the best item
-    let bestBuilding = Object.keys(this.CM.Cache.Objects)[0];
+    let bestBuilding = null;
     Object.keys(this.CM.Cache.Objects).forEach((currBuilding) => {
+      if (items_to_ignore.includes(this.ToCookieClickerItem(currBuilding))) {
+        return;
+      }
+
+      if (bestBuilding === null) {
+        bestBuilding = currBuilding;
+        return;
+      }
+
       if (
         this.CM.Cache.Objects[currBuilding].pp <
-          this.CM.Cache.Objects[bestBuilding].pp &&
-        !items_to_ignore.includes(this.ToCookieClickerItem(currBuilding))
+        this.CM.Cache.Objects[bestBuilding].pp
       ) {
         bestBuilding = currBuilding;
       }
@@ -845,18 +894,21 @@ class CookieMonsterConnector extends AutoBuyerGameConnector {
 
     let bestUpgrade = null;
     Object.values(window.Game.UpgradesInStore).forEach((currUpgrade) => {
-      if (currUpgrade.pool == "toggle") {
+      if (
+        currUpgrade.pool == "toggle" ||
+        items_to_ignore.includes(this.ToCookieClickerItem(currUpgrade.name))
+      ) {
         return;
       }
 
       if (bestUpgrade === null) {
         bestUpgrade = currUpgrade.name;
+        return;
       }
 
       if (
         this.CM.Cache.Upgrades[currUpgrade.name].pp <
-          this.CM.Cache.Upgrades[bestUpgrade].pp &&
-        !items_to_ignore.includes(this.ToCookieClickerItem(currUpgrade.name))
+        this.CM.Cache.Upgrades[bestUpgrade].pp
       ) {
         bestUpgrade = currUpgrade.name;
       }
@@ -983,7 +1035,9 @@ class AutoBuyer extends RepeatingManager {
     // We need to save money
     if (time_until_afford > this.Settings.MaxWaitTimeToBuy_s) {
       // The item is too expensive, add it to the list of too expensive items and ignore it next time
-      this.Status.TooExpensiveItems.push(bestItem);
+      if (!this.Status.TooExpensiveItems.includes(bestItem)) {
+        this.Status.TooExpensiveItems.push(bestItem);
+      }
     }
 
     // Check again in a bit
@@ -1009,7 +1063,7 @@ class AutoBuyer extends RepeatingManager {
       target_amount -= this.GameConnector.GetDesiredBankAmount();
     }
 
-    let cps = window.Game.cookiesPs;
+    let cps = window.Game.unbuffedCps;
     let cookies_missing = bestItem.getPrice(quantity) - target_amount;
 
     return Math.max(cookies_missing / cps, 0);
@@ -1022,7 +1076,7 @@ class AutoBuyer extends RepeatingManager {
       target_amount = this.GameConnector.GetDesiredBankAmount();
     }
 
-    let cps = window.Game.cookiesPs;
+    let cps = window.Game.unbuffedCps;
 
     let cookies_missing = target_amount - window.Game.cookies;
 
