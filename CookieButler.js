@@ -92,12 +92,6 @@ var CBLogger = {
 };
 
 var CBAutoClicker = {
-  Requests: {
-    at_least_one_type: 0,
-  },
-
-  BigCookieClickEventIdentifier: null,
-
   Settings: {
     ClickFrequency: 100, // Clicks per second (Hz)
   },
@@ -105,6 +99,10 @@ var CBAutoClicker = {
   Status: {
     StartedAutomatically: false,
     Clicking: false,
+    BigCookieClickEventIdentifier: null,
+    Requests: {
+      at_least_one_type: 0,
+    },
   },
 
   ClickBigCookie: function () {
@@ -115,7 +113,7 @@ var CBAutoClicker = {
   n_demands: function () {
     const count = (obj) => Object.values(obj).reduce((a, b) => a + b);
 
-    return count(this.Requests);
+    return count(this.Status.Requests);
   },
 
   Start: function () {
@@ -127,39 +125,31 @@ var CBAutoClicker = {
       CBDOMUtilities.Settings.TimeBetweenClicks_ms
     );
 
-    this.BigCookieClickEventIdentifier = window.setInterval(function () {
+    this.Status.BigCookieClickEventIdentifier = window.setInterval(function () {
       that.ClickBigCookie();
     }, Math.max(clicking_period, CBDOMUtilities.Settings.TimeBetweenClicks_ms));
-    window.CBLogger.Update(
-      "Autoclicker::Start",
-      clicking_period,
-      this.Requests
-    );
+    window.CBLogger.Update("Autoclicker::Start", clicking_period, this.Status);
 
     this.Status.Clicking = true;
   },
 
   Stop: function () {
     // Stop the autoclicker
-    window.clearInterval(this.BigCookieClickEventIdentifier);
-    this.BigCookieClickEventIdentifier = null;
-    window.CBLogger.Update(
-      "Autoclicker::Stop",
-      this.BigCookieClickEventIdentifier,
-      this.Requests
-    );
+    window.clearInterval(this.Status.BigCookieClickEventIdentifier);
+    this.Status.BigCookieClickEventIdentifier = null;
+    window.CBLogger.Update("Autoclicker::Stop", undefined, this.Status);
     this.Status.Clicking = false;
   },
 
   SmartStart: function () {
     // Start the autoclicker only if there is at least one request
     if (this.n_demands() > 0) {
-      if (this.BigCookieClickEventIdentifier === null) {
+      if (this.Status.BigCookieClickEventIdentifier === null) {
         this.Start();
         this.Status.StartedAutomatically = true;
       }
     } else {
-      if (this.BigCookieClickEventIdentifier !== null) {
+      if (this.Status.BigCookieClickEventIdentifier !== null) {
         if (this.Status.StartedAutomatically == true) {
           this.Stop();
           this.Status.StartedAutomatically = false;
@@ -169,12 +159,12 @@ var CBAutoClicker = {
   },
 
   Demand: function (demander) {
-    this.Requests[demander] = 1;
+    this.Status.Requests[demander] = 1;
     this.SmartStart();
   },
 
   Retreat: function (retreater) {
-    this.Requests[retreater] = 0;
+    this.Status.Requests[retreater] = 0;
     this.SmartStart();
   },
 };
@@ -190,6 +180,7 @@ class ManagerBase {
       Name: name,
       Active: false,
       GameFound: false,
+      Settings: this.Settings,
     };
 
     // Ensure that the game is loaded
@@ -556,7 +547,10 @@ class GrimoireManager extends ManagerBase {
 
   FindGrimoire() {
     // Check if the grimoire is activated in the game
-    if (window.Game.Objects["Wizard tower"].minigameLoaded) {
+    if (
+      window.Game.Objects["Wizard tower"].minigameLoaded &&
+      window.Game.Objects["Wizard tower"].onMinigame
+    ) {
       this.Grimoire = window.Game.Objects["Wizard tower"].minigame;
     } else {
       this.Grimoire = null;
@@ -689,8 +683,11 @@ class GrimoireManager extends ManagerBase {
 
   Plan() {
     if (this.Grimoire == null) {
-      // There is no grimoire, try to find it and try again next second
       this.FindGrimoire();
+    }
+
+    if (this.Grimoire == null) {
+      // There is no grimoire, try to find it and try again next second
       window.CBLogger.Update(
         this.Status.Name + "::Plan",
         "No grimoire!",
@@ -1101,6 +1098,7 @@ var CB = {
     },
   },
 };
+
 CB.Managers = {
   Wrinklers: new WrinklersManager(
     "wrinklers_manager",
