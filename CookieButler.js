@@ -847,10 +847,14 @@ class CookieMonsterConnector extends AutoBuyerGameConnector {
       }
     }, this);
 
-    let bestUpgrade = Object.values(window.Game.UpgradesInStore)[0].name;
+    let bestUpgrade = null;
     Object.values(window.Game.UpgradesInStore).forEach((currUpgrade) => {
       if (currUpgrade.pool == "toggle") {
         return;
+      }
+
+      if (bestUpgrade === null) {
+        bestUpgrade = currUpgrade.name;
       }
 
       if (
