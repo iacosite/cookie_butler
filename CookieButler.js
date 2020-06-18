@@ -444,12 +444,12 @@ class ShimmersManager extends RepeatingManager {
     let elements = CBDOMUtilities.GetDOMElements("shimmer");
     let len = elements.length;
     if (len > 0) {
-      CBDOMUtilities.ClickDOMElements(elements);
       window.CBLogger.Update(
-        this.Status.Name + "::PopAllShimmers",
+        this.Status.Name + "::PopAllShimmersByClicking",
         len,
-        elements
+        window.Game.shimmers
       );
+      CBDOMUtilities.ClickDOMElements(elements);
     }
   }
 }
@@ -1043,6 +1043,11 @@ class AutoBuyer extends RepeatingManager {
       dom_item = CBDOMUtilities.GetUpgradeDOMElement(bestItem);
     }
     CBDOMUtilities.ClickDOMElement(dom_item);
+    CBLogger.Update(
+      this.Settings.Name + "::Buy",
+      bestItem,
+      this.Status.TooExpensiveItems
+    );
   }
 
   RefreshExpensiveItems() {
