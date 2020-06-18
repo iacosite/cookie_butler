@@ -527,6 +527,7 @@ class GrimoireManager extends ManagerBase {
     super(name, settings);
     this.Status.TimeoutIdentifier = null;
     this.Status.GameSupportedVersions = [2.022];
+    this.Status.WillFireAt = null;
 
     this.Grimoire = null;
     this.FindGrimoire();
@@ -680,11 +681,9 @@ class GrimoireManager extends ManagerBase {
       that.Plan();
     }, ms);
 
-    window.CBLogger.Update(
-      this.Status.Name + "::Replan",
-      this.Status.TimeoutIdentifier,
-      ms
-    );
+    this.Status.WillFireAt = new Date(Date.now() + ms).toString();
+
+    window.CBLogger.Update(this.Status.Name + "::Replan", ms, this.Status);
     return;
   }
 
@@ -697,7 +696,7 @@ class GrimoireManager extends ManagerBase {
         "No grimoire!",
         this.Grimoire
       );
-      return this.Replan(1000);
+      return this.Replan(10000);
     }
 
     let ms_to_mana = this.CalculateTimeToMana(this.Grimoire.magicM);
@@ -720,7 +719,7 @@ class GrimoireManager extends ManagerBase {
 
     if (this.Settings.DesiredSpellOutcomes.includes(result.outcome)) {
       // We can cast it! (or at least cast it whenever we can)
-      this.CastSpell(spell);
+      this.CastSpell(spell, result);
     } else {
       // Try to cast another spell
       spell = this.Grimoire.spells["conjure baked goods"];
@@ -729,12 +728,12 @@ class GrimoireManager extends ManagerBase {
       let any_wrinkler = window.Game.wrinklers.some((w) => w.close == 1);
 
       if (result.win || !any_wrinkler) {
-        this.CastSpell(spell);
+        this.CastSpell(spell, result);
       } else {
         // Bad luck.
         // even if `resurrect abomination` fails, it is not a big deal, come on :)
         spell = this.Grimoire.spells["resurrect abomination"];
-        this.CastSpell(spell);
+        this.CastSpell(spell, result);
       }
     }
 
