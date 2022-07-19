@@ -68,16 +68,6 @@ var CBLogger = {
     LoggingLevel: 1,
   },
 
-  Debug: function (action, result, notes) {
-    return Update(action, result, notes, 1);
-  },
-  Warn: function (action, result, notes) {
-    return Update(action, result, notes, 2);
-  },
-  Error: function (action, result, notes) {
-    return Update(action, result, notes, 3);
-  },
-
   Update: function (action, result, notes, loglevel=0) {
     // Save a datapoint in the history
     this.History.push({
@@ -91,6 +81,17 @@ var CBLogger = {
       console.log(action, result, notes);
     }
   },
+
+  Debug: function (action, result, notes) {
+    return this.Update(action, result, notes, 1);
+  },
+  Warn: function (action, result, notes) {
+    return this.Update(action, result, notes, 2);
+  },
+  Error: function (action, result, notes) {
+    return this.Update(action, result, notes, 3);
+  },
+
 
   Reset: function () {
     this.History = [];
