@@ -984,7 +984,7 @@ class AutoBuyer extends RepeatingManager {
     }
     CBDOMUtilities.ClickDOMElement(dom_item);
     CBLogger.Update(
-      this.Settings.Name + "::Buy",
+      this.Status.Name + "::Buy",
       bestItem,
       this.Status.TooExpensiveItems
     );
