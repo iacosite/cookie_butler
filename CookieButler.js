@@ -65,7 +65,7 @@ var CBLogger = {
   History: [],
 
   Settings: {
-    LoggingLevel: 0,
+    LoggingLevel: 1,
   },
 
   Update: function (action, result, notes) {
@@ -246,145 +246,40 @@ class RepeatingManager extends ManagerBase {
   }
 
   Activate() {
-    if (!this.Status.Active) {
-      if (this.Status.IntervalIdentifier === null) {
-        this.ScheduleCheckFunction();
-
-        window.CBLogger.Update(
-          this.Status.Name + "::Activate",
-          "Activated",
-          this.Status.IntervalIdentifier
-        );
-      } else {
-        // This is a bug
-        window.CBLogger.Update(
-          this.Status.Name + "::Activate",
-          "Bug! this.Status.IntervalIdentifier not null, but manager is set non active! Trying to recover",
-          this.Status.IntervalIdentifier
-        );
-
-        // Try to recover and retry
-        this.Status.IntervalIdentifier = null;
-        if (this.Activate()) {
-          window.CBLogger.Update(
-            this.Status.Name + "::Activate",
-            "Bug seems to have recovered",
-            this.Status.IntervalIdentifier
-          );
-        } else {
-          window.CBLogger.Update(
-            this.Status.Name + "::Activate",
-            "Bug seems to NOT have recovered",
-            this.Status.IntervalIdentifier
-          );
-          return false;
-        }
-      }
+    if (this.Status.Active) {
+      window.CBLogger.Update(
+        this.Status.Name + "::Activate",
+        "Already active!",
+        this.Status
+      );
     } else {
-      if (this.Status.IntervalIdentifier !== null) {
-        window.CBLogger.Update(
-          this.Status.Name + "::Activate",
-          "Already active!",
-          this.Status.Active
-        );
-      } else {
-        // This is a bug
-        window.CBLogger.Update(
-          this.Status.Name + "::Activate",
-          "Bug! this.Status.IntervalIdentifier null, but manager is set active! Trying to recover",
-          this.Status.IntervalIdentifier
-        );
-
-        // Try to recover and retry
-        this.Status.Active = false;
-        if (this.Activate()) {
-          window.CBLogger.Update(
-            this.Status.Name + "::Activate",
-            "Bug seems to have recovered",
-            this.Status.IntervalIdentifier
-          );
-        } else {
-          window.CBLogger.Update(
-            this.Status.Name + "::Activate",
-            "Bug seems to NOT have recovered",
-            this.Status.IntervalIdentifier
-          );
-          return false;
-        }
-      }
+      this.ScheduleCheck(this.Settings.Interval_ms);
+      window.CBLogger.Update(
+        this.Status.Name + "::Activate",
+        "Activated!",
+        this.Status
+      );
     }
-
     return this.Status.Active;
   }
 
   Deactivate() {
+
     if (this.Status.Active) {
-      if (this.Status.IntervalIdentifier === null) {
-        // This is a bug
-        window.CBLogger.Update(
-          this.Status.Name + "::Deactivate",
-          "Bug! this.Status.IntervalIdentifier null, but manager is set active! Trying to recover",
-          this.Status.IntervalIdentifier
-        );
-
-        // Try to recover and retry
-        this.Status.Active = false;
-        if (this.Deactivate()) {
-          window.CBLogger.Update(
-            this.Status.Name + "::Deactivate",
-            "Bug seems to have recovered",
-            this.Status.IntervalIdentifier
-          );
-        } else {
-          window.CBLogger.Update(
-            this.Status.Name + "::Deactivate",
-            "Bug seems to NOT have recovered",
-            this.Status.IntervalIdentifier
-          );
-          return false;
-        }
-      } else {
-        this.AbortCheckFunction();
-
-        window.CBLogger.Update(
-          this.Status.Name + "::Deactivate",
-          "Deactivated",
-          this.Status.Active
-        );
-      }
+      this.AbortCheckFunction();
+      window.CBLogger.Update(
+        this.Status.Name + "::Deactivate",
+        "Deactivated!",
+        this.Status
+      );
     } else {
-      if (this.Status.IntervalIdentifier === null) {
-        window.CBLogger.Update(
-          this.Status.Name + "::Deactivate",
-          "Already inactive!",
-          this.Status.Active
-        );
-      } else {
-        // This is a bug
-        window.CBLogger.Update(
-          this.Status.Name + "::Deactivate",
-          "Bug! this.Status.IntervalIdentifier not null, but manager is set not active! Trying to recover",
-          this.Status.IntervalIdentifier
-        );
-
-        // Try to recover and retry
-        this.Status.Active = true;
-        if (this.Deactivate()) {
-          window.CBLogger.Update(
-            this.Status.Name + "::Deactivate",
-            "Bug seems to have recovered",
-            this.Status.IntervalIdentifier
-          );
-        } else {
-          window.CBLogger.Update(
-            this.Status.Name + "::Deactivate",
-            "Bug seems to NOT have recovered",
-            this.Status.IntervalIdentifier
-          );
-          return false;
-        }
-      }
+      window.CBLogger.Update(
+        this.Status.Name + "::Deactivate",
+        "Already deactivated!",
+        this.Status
+      );
     }
+
     return !this.Status.Active;
   }
 
@@ -395,13 +290,16 @@ class RepeatingManager extends ManagerBase {
     return this.Status.Active;
   }
 
-  ScheduleCheckFunction() {
+  ScheduleCheck(time_ms) {
     let that = this;
+    this.Status.IntervalIdentifier = null;
     this.Status.IntervalIdentifier = window.setInterval(function () {
       that.Check();
-    }, that.Settings.Interval_ms);
+    }, time_ms);
+    this.Status.WillFireAt = Date.now() + time_ms;
 
-    this.Status.Active = true;
+    window.CBLogger.Update('ScheduleCheck::Reschedule',{'Scheduled for':this.Status.WillFireAt}, this.Status)
+    this.Status.Active = this.Status.IntervalIdentifier !== null;
   }
 
   AbortCheckFunction() {
@@ -728,7 +626,7 @@ class GrimoireManager extends ManagerBase {
     }
 
     if (this.Grimoire == null) {
-      // There is no grimoire, try to find it and try again next second
+      // There is no grimoire, try to find it and try again next 10 seconds
       window.CBLogger.Update(
         this.Status.Name + "::Plan",
         "No grimoire!",
@@ -836,7 +734,7 @@ class AutoClickerChecker extends RepeatingManager {
   }
 }
 
-class AutoBuyerGameConnector {
+class GameConnector {
   findBestItemFunc(items_to_ignore) {
     let bestItem = this.FindBestItem(items_to_ignore);
     return this.ToCookieClickerItem(bestItem);
@@ -856,7 +754,7 @@ class AutoBuyerGameConnector {
   PaybackPeriod(item) { }
 }
 
-class CookieMonsterConnector extends AutoBuyerGameConnector {
+class CookieMonsterConnector extends GameConnector {
 
   CMData() {
     return window.CookieMonsterData;
@@ -984,7 +882,6 @@ class AutoBuyer extends RepeatingManager {
     this.GameConnector = null;
     let DefaultSettings = {
       UseAdapterThreshold: true,
-      BuyInterval_ms: 50,
       MaxWaitTimeToBuy_s: 2160000, // 25days
     };
     super.FillSettings(DefaultSettings);
@@ -1001,36 +898,19 @@ class AutoBuyer extends RepeatingManager {
       window.CBLogger.Update(
         this.Name + "::Activate",
         "CookieMonster not found!",
-        this.CM
+        this.GameConnector
       );
       console.log(
         "AutoBuyer requires CookeMonster to work correctly. Load it and then restart the manager with"
       );
-      console.log("CB.Managers.AutoBuyer.Restart()");
-    }
-
-    if (this.GameConnector.valid) {
-      super.Activate();
+      return false;
     } else {
-      console.log(
-        "AutoBuyer requires CookeMonster to work correctly. Impossible to activate"
-      );
+      return super.Activate();
     }
-  }
-
-  ScheduleCheckFunction() {
-    this.RescheduleCheckFunction(10);
-    this.Status.Active = true;
-  }
-
-  AbortCheckFunction() {
-    let that = this;
-    window.clearTimeout(that.Status.IntervalIdentifier);
-    this.Status.IntervalIdentifier = null;
-    this.Status.Active = false;
   }
 
   Check() {
+    window.CBLogger.Update("AutoBuyer::Check", Date.now(), this.Status)
     this.RefreshExpensiveItems();
 
     let bestItem = this.GameConnector.findBestItemFunc(
@@ -1042,17 +922,15 @@ class AutoBuyer extends RepeatingManager {
     if (time_until_afford == 0) {
       // Buy it and check again soon
       this.Buy(bestItem);
-      this.RescheduleCheckFunction(this.Settings.BuyInterval_ms);
       return;
     }
 
     if (
       this.HaveMoneyInTheBank(bestItem) &&
-      this.GameConnector.this.PaybackPeriod(bestItem.name) < this.TimeUntilBankThreshold()
+      this.GameConnector.PaybackPeriod(bestItem.name) < this.TimeUntilBankThreshold()
     ) {
       // Buy it anyway, it will save us time
       this.Buy(bestItem);
-      this.RescheduleCheckFunction(this.Settings.BuyInterval_ms);
       return;
     }
 
@@ -1063,18 +941,6 @@ class AutoBuyer extends RepeatingManager {
         this.Status.TooExpensiveItems.push(bestItem);
       }
     }
-
-    // Check again in a bit
-    this.RescheduleCheckFunction(this.Settings.Interval_ms);
-  }
-
-  RescheduleCheckFunction(interval_ms) {
-    // Reschedule the Check() function at at a definite time
-    let that = this;
-    this.Status.IntervalIdentifier = window.setTimeout(function () {
-      that.Check();
-    }, interval_ms);
-    this.Status.WillFireAt = new Date(Date.now() + interval_ms).toString();
   }
 
   HaveMoneyInTheBank(bestItem, quantity) {
@@ -1139,7 +1005,7 @@ class AutoBuyer extends RepeatingManager {
 
 var CB = {
   Settings: {
-    DefaultLoggingLevel: 0,
+    LoggingLevel: 1,
     Managers: {
       Wrinklers: {
         Activate: true,
@@ -1213,10 +1079,10 @@ CB.Managers = {
     "Cursed finger"
   ),
 
-  Grimoire: new GrimoireManager(
-    "grimoire_manager",
-    CB.Settings.Managers.Grimoire.CustomSettings
-  ),
+  // Grimoire: new GrimoireManager(
+  //   "grimoire_manager",
+  //   CB.Settings.Managers.Grimoire.CustomSettings
+  // ),
 
   AutoBuyer: new AutoBuyer(
     "autobuyer_manager",
@@ -1226,6 +1092,9 @@ CB.Managers = {
 };
 
 CB.Activate = function () {
+  // Set logging level
+  window.CBLogger.Settings.LoggingLevel = CB.Settings.LoggingLevel;
+
   // Activate all the Managers
   Object.entries(CB.Managers).forEach(([name, manager]) => {
     if (CB.Settings.Managers[name].Activate) {
@@ -1266,4 +1135,4 @@ CB.Restart = function () {
   this.Activate();
 };
 
-CB.Activate();
+CB.Activate()
