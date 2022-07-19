@@ -842,7 +842,7 @@ class AutoBuyerGameConnector {
     return this.ToCookieClickerItem(bestItem);
   }
 
-  FindBestItem(items_to_ignore) {}
+  FindBestItem(items_to_ignore) { }
 
   ToCookieClickerItem(item) {
     // This function converts the item returned from `this.FindBestItem` to the Object/Upgrade object from CookieClicker.
@@ -853,28 +853,41 @@ class AutoBuyerGameConnector {
     // Return the desired amount of cookies in the bank
   }
 
-  PaybackPeriod(item) {}
+  PaybackPeriod(item) { }
 }
 
 class CookieMonsterConnector extends AutoBuyerGameConnector {
+
+  CMData() {
+    return window.CookieMonsterData;
+  }
+
   constructor() {
     super();
     this.valid = false;
 
-    if (window.CM) {
-      this.CM = window.CM;
+    if (this.CMData()) {
       this.valid = true;
     }
   }
 
-  FindBestItem(items_to_ignore) {
+  CMObjects() {
+    return this.CMData().Objects1;
+  }
+
+  CMUpgrades() {
+    return this.CMData().Upgrades;
+  }
+
+
+  FindBestBuilding(items_to_ignore) {
     if (!this.valid) {
       return null;
     }
 
     // Find the best item
     let bestBuilding = null;
-    Object.keys(this.CM.Cache.Objects).forEach((currBuilding) => {
+    Object.keys(this.CMObjects()).forEach((currBuilding) => {
       if (items_to_ignore.includes(this.ToCookieClickerItem(currBuilding))) {
         return;
       }
@@ -884,13 +897,18 @@ class CookieMonsterConnector extends AutoBuyerGameConnector {
         return;
       }
 
-      if (
-        this.CM.Cache.Objects[currBuilding].pp <
-        this.CM.Cache.Objects[bestBuilding].pp
-      ) {
+      if (this.PaybackPeriod(currBuilding) < this.PaybackPeriod(bestBuilding)) {
         bestBuilding = currBuilding;
       }
     }, this);
+
+    return bestBuilding;
+  }
+
+  FindBestUpgrade(items_to_ignore) {
+    if (!this.valid) {
+      return null;
+    }
 
     let bestUpgrade = null;
     Object.values(window.Game.UpgradesInStore).forEach((currUpgrade) => {
@@ -906,18 +924,24 @@ class CookieMonsterConnector extends AutoBuyerGameConnector {
         return;
       }
 
-      if (
-        this.CM.Cache.Upgrades[currUpgrade.name].pp <
-        this.CM.Cache.Upgrades[bestUpgrade].pp
-      ) {
+      if (this.PaybackPeriod(currUpgrade.name) < this.PaybackPeriod(bestUpgrade)) {
         bestUpgrade = currUpgrade.name;
       }
     }, this);
 
-    if (
-      this.CM.Cache.Upgrades[bestUpgrade].pp <
-      this.CM.Cache.Objects[bestBuilding].pp
-    ) {
+    return bestUpgrade;
+  }
+
+  FindBestItem(items_to_ignore) {
+    if (!this.valid) {
+      return null;
+    }
+
+    let bestBuilding = this.FindBestBuilding(items_to_ignore);
+
+    let bestUpgrade = this.FindBestUpgrade(items_to_ignore);
+
+    if (this.PaybackPeriod(bestUpgrade) < this.PaybackPeriod(bestBuilding)) {
       return bestUpgrade;
     } else {
       return bestBuilding;
@@ -937,16 +961,16 @@ class CookieMonsterConnector extends AutoBuyerGameConnector {
   }
 
   GetDesiredBankAmount() {
-    return this.CM.Cache.LuckyFrenzy;
+    return this.CMData().Cache.LuckyFrenzy;
   }
 
   PaybackPeriod(item) {
-    if (this.CM.Cache.Upgrades[item.name]) {
-      return this.CM.Cache.Upgrades[item.name].pp;
+    if (this.CMUpgrades()[item] && this.CMUpgrades()[item].pp !== null) {
+      return this.CMUpgrades()[item].pp;
     }
 
-    if (this.CM.Cache.Objects[item.name]) {
-      return this.CM.Cache.Objects[item.name].pp;
+    if (this.CMObjects()[item] && this.CMObjects()[item].pp !== null) {
+      return this.CMObjects()[item].pp;
     }
 
     return Infinity;
@@ -1024,7 +1048,7 @@ class AutoBuyer extends RepeatingManager {
 
     if (
       this.HaveMoneyInTheBank(bestItem) &&
-      this.GameConnector.PaybackPeriod(bestItem) < this.TimeUntilBankThreshold()
+      this.GameConnector.this.PaybackPeriod(bestItem.name) < this.TimeUntilBankThreshold()
     ) {
       // Buy it anyway, it will save us time
       this.Buy(bestItem);
