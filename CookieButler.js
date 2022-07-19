@@ -68,7 +68,17 @@ var CBLogger = {
     LoggingLevel: 1,
   },
 
-  Update: function (action, result, notes) {
+  Debug: function (action, result, notes) {
+    return Update(action, result, notes, 1);
+  },
+  Warn: function (action, result, notes) {
+    return Update(action, result, notes, 2);
+  },
+  Error: function (action, result, notes) {
+    return Update(action, result, notes, 3);
+  },
+
+  Update: function (action, result, notes, loglevel=0) {
     // Save a datapoint in the history
     this.History.push({
       Time_ms: Date.now(),
@@ -77,7 +87,7 @@ var CBLogger = {
       notes: notes,
     });
 
-    if (this.Settings.LoggingLevel > 0) {
+    if (loglevel > this.Settings.LoggingLevel) {
       console.log(action, result, notes);
     }
   },
@@ -128,7 +138,7 @@ var CBAutoClicker = {
     this.Status.BigCookieClickEventIdentifier = window.setInterval(function () {
       that.ClickBigCookie();
     }, Math.max(clicking_period, CBDOMUtilities.Settings.TimeBetweenClicks_ms));
-    window.CBLogger.Update("Autoclicker::Start", clicking_period, this.Status);
+    window.CBLogger.Warn("Autoclicker::Start", clicking_period, this.Status);
 
     this.Status.Clicking = true;
   },
@@ -137,7 +147,7 @@ var CBAutoClicker = {
     // Stop the autoclicker
     window.clearInterval(this.Status.BigCookieClickEventIdentifier);
     this.Status.BigCookieClickEventIdentifier = null;
-    window.CBLogger.Update("Autoclicker::Stop", undefined, this.Status);
+    window.CBLogger.Warn("Autoclicker::Stop", undefined, this.Status);
     this.Status.Clicking = false;
   },
 
@@ -243,18 +253,19 @@ class RepeatingManager extends ManagerBase {
 
     this.Settings.Interval_ms = interval_ms;
     this.Status.IntervalIdentifier = null;
+    this.Status.FirstSchedule = null;
   }
 
   Activate() {
     if (this.Status.Active) {
-      window.CBLogger.Update(
+      window.CBLogger.Warn(
         this.Status.Name + "::Activate",
         "Already active!",
         this.Status
       );
     } else {
       this.ScheduleCheck(this.Settings.Interval_ms);
-      window.CBLogger.Update(
+      window.CBLogger.Warn(
         this.Status.Name + "::Activate",
         "Activated!",
         this.Status
@@ -267,13 +278,13 @@ class RepeatingManager extends ManagerBase {
 
     if (this.Status.Active) {
       this.AbortCheckFunction();
-      window.CBLogger.Update(
+      window.CBLogger.Warn(
         this.Status.Name + "::Deactivate",
         "Deactivated!",
         this.Status
       );
     } else {
-      window.CBLogger.Update(
+      window.CBLogger.Warn(
         this.Status.Name + "::Deactivate",
         "Already deactivated!",
         this.Status
@@ -296,9 +307,7 @@ class RepeatingManager extends ManagerBase {
     this.Status.IntervalIdentifier = window.setInterval(function () {
       that.Check();
     }, time_ms);
-    this.Status.WillFireAt = Date.now() + time_ms;
-
-    window.CBLogger.Update('ScheduleCheck::Reschedule',{'Scheduled for':this.Status.WillFireAt}, this.Status)
+    this.Status.FirstSchedule = Date.now();
     this.Status.Active = this.Status.IntervalIdentifier !== null;
   }
 
@@ -320,7 +329,7 @@ class ShimmersManager extends RepeatingManager {
   }
 
   PopShimmer(shimmer) {
-    window.CBLogger.Update(
+    window.CBLogger.Debug(
       this.Status.Name + "::PopShimmer",
       "Wrath: " + shimmer.wrath,
       shimmer
@@ -333,7 +342,7 @@ class ShimmersManager extends RepeatingManager {
     let elements = CBDOMUtilities.GetDOMElements("shimmer");
     let len = elements.length;
     if (len > 0) {
-      window.CBLogger.Update(
+      window.CBLogger.Debug(
         this.Status.Name + "::PopAllShimmersByClicking",
         len,
         window.Game.shimmers
@@ -400,7 +409,7 @@ class WrinklersManager extends RepeatingManager {
   }
 
   PopWrinkler(wrinkler) {
-    window.CBLogger.Update(
+    window.CBLogger.Debug(
       this.Status.Name + "::PopWrinkler",
       wrinkler,
       "shiny: " + wrinkler.type
@@ -538,7 +547,7 @@ class GrimoireManager extends ManagerBase {
     // Restore the random generator
     Math.seedrandom();
 
-    window.CBLogger.Update(
+    window.CBLogger.Debug(
       this.Status.Name + "::SimulateSpell",
       spell,
       spell_result
@@ -561,7 +570,7 @@ class GrimoireManager extends ManagerBase {
       }
     }, 500);
 
-    window.CBLogger.Update(
+    window.CBLogger.Debug(
       this.Status.Name + "::CastSpell",
       spell,
       expected_result
@@ -591,7 +600,7 @@ class GrimoireManager extends ManagerBase {
       this.Status.WillFireAt = new Date(
         Date.now() + this.Settings.DelayedSpellCastWaitingTime_ms
       ).toString();
-      CBLogger.Update(
+      CBLogger.Debug(
         this.Status.Name + "::CastWhenBuffered",
         "waiting for buff",
         this.Status
@@ -610,7 +619,7 @@ class GrimoireManager extends ManagerBase {
 
     this.Status.WillFireAt = new Date(Date.now() + ms).toString();
 
-    window.CBLogger.Update(this.Status.Name + "::Replan", ms, this.Status);
+    window.CBLogger.Debug(this.Status.Name + "::Replan", ms, this.Status);
     return;
   }
 
@@ -627,7 +636,7 @@ class GrimoireManager extends ManagerBase {
 
     if (this.Grimoire == null) {
       // There is no grimoire, try to find it and try again next 10 seconds
-      window.CBLogger.Update(
+      window.CBLogger.Warn(
         this.Status.Name + "::Plan",
         "No grimoire!",
         this.Grimoire
@@ -639,7 +648,7 @@ class GrimoireManager extends ManagerBase {
 
     if (ms_to_mana > 0) {
       // We can't cast the spell, it doesn't make sense to figure out what to do
-      window.CBLogger.Update(
+      window.CBLogger.Debug(
         this.Status.Name + "::Plan",
         "Mana not full!",
         ms_to_mana
@@ -682,7 +691,7 @@ class GrimoireManager extends ManagerBase {
   Activate() {
     this.Plan();
     this.Status.Active = true;
-    window.CBLogger.Update(
+    window.CBLogger.Warn(
       this.Status.Name + "::Activate",
       "Activated",
       this.Status.Active
@@ -695,7 +704,7 @@ class GrimoireManager extends ManagerBase {
     window.clearTimeout(that.Status.TimeoutIdentifier);
     this.Status.TimeoutIdentifier = null;
     this.Status.Active = false;
-    window.CBLogger.Update(
+    window.CBLogger.Warn(
       this.Status.Name + "::Deactivate",
       "Deactivated",
       this.Status.Active
@@ -706,7 +715,7 @@ class GrimoireManager extends ManagerBase {
   Restart() {
     this.Deactivate();
     this.Activate();
-    window.CBLogger.Update(
+    window.CBLogger.Warn(
       this.Status.Name + "::Restart",
       "Restarted",
       this.Status.Active
@@ -886,7 +895,6 @@ class AutoBuyer extends RepeatingManager {
     };
     super.FillSettings(DefaultSettings);
 
-    this.Status.WillFireAt = null;
     this.Status.TooExpensiveItems = [];
   }
 
@@ -895,7 +903,7 @@ class AutoBuyer extends RepeatingManager {
     this.GameConnector = new CookieMonsterConnector();
 
     if (!this.GameConnector.valid) {
-      window.CBLogger.Update(
+      window.CBLogger.Error(
         this.Name + "::Activate",
         "CookieMonster not found!",
         this.GameConnector
@@ -910,67 +918,45 @@ class AutoBuyer extends RepeatingManager {
   }
 
   Check() {
-    window.CBLogger.Update("AutoBuyer::Check", Date.now(), this.Status)
     this.RefreshExpensiveItems();
 
     let bestItem = this.GameConnector.findBestItemFunc(
       this.Status.TooExpensiveItems
     );
 
-    let time_until_afford = this.TimeUntilCanAfford(bestItem, 1);
+    // Decide the money we want left in the bank
+    let target_bank_amount = this.ItemCost(bestItem, 1);
+    if (this.Settings.UseAdapterThreshold) {
+      target_bank_amount += this.GameConnector.GetDesiredBankAmount();
+    }
 
+    // Check if we can actually afford
+    let time_until_afford = this.TimeUntilBankValue(target_bank_amount);
     if (time_until_afford == 0) {
-      // Buy it and check again soon
       this.Buy(bestItem);
-      return;
     }
 
-    if (
-      this.HaveMoneyInTheBank(bestItem) &&
-      this.GameConnector.PaybackPeriod(bestItem.name) < this.TimeUntilBankThreshold()
-    ) {
-      // Buy it anyway, it will save us time
-      this.Buy(bestItem);
-      return;
-    }
+    window.CBLogger.Debug("AutoBuyer::Check", Date.now(), this.Status)
 
-    // We need to save money
-    if (time_until_afford > this.Settings.MaxWaitTimeToBuy_s) {
-      // The item is too expensive, add it to the list of too expensive items and ignore it next time
-      if (!this.Status.TooExpensiveItems.includes(bestItem)) {
-        this.Status.TooExpensiveItems.push(bestItem);
-      }
-    }
   }
 
-  HaveMoneyInTheBank(bestItem, quantity) {
-    return bestItem.getPrice(quantity) < window.Game.cookies;
+  TimeUntilCanAfford(item, quantity) {
+    let target_amount = this.ItemCost(item, quantity);
+
+    return this.TimeUntilBankValue(target_amount);
   }
 
-  TimeUntilCanAfford(bestItem, quantity) {
-    let target_amount = window.Game.cookies;
-    if (this.Settings.UseAdapterThreshold) {
-      target_amount -= this.GameConnector.GetDesiredBankAmount();
-    }
-
-    let cps = window.Game.unbuffedCps;
-    let cookies_missing = bestItem.getPrice(quantity) - target_amount;
-
-    return Math.max(cookies_missing / cps, 0);
-  }
-
-  TimeUntilBankThreshold() {
-    let target_amount = 0;
-
-    if (this.Settings.UseAdapterThreshold) {
-      target_amount = this.GameConnector.GetDesiredBankAmount();
-    }
+  TimeUntilBankValue(target_amount) {
 
     let cps = window.Game.unbuffedCps;
 
     let cookies_missing = target_amount - window.Game.cookies;
 
     return Math.max(cookies_missing / cps, 0);
+  }
+
+  ItemCost(item, quantity) {
+    return item.getPrice(quantity);
   }
 
   Buy(bestItem) {
@@ -983,7 +969,7 @@ class AutoBuyer extends RepeatingManager {
       dom_item = CBDOMUtilities.GetUpgradeDOMElement(bestItem);
     }
     CBDOMUtilities.ClickDOMElement(dom_item);
-    CBLogger.Update(
+    CBLogger.Debug(
       this.Status.Name + "::Buy",
       bestItem,
       this.Status.TooExpensiveItems
@@ -1099,9 +1085,9 @@ CB.Activate = function () {
   Object.entries(CB.Managers).forEach(([name, manager]) => {
     if (CB.Settings.Managers[name].Activate) {
       if (manager.Activate()) {
-        window.CBLogger.Update("Activated", name, manager.Status);
+        window.CBLogger.Warn("Activated", name, manager.Status);
       } else {
-        window.CBLogger.Update(
+        window.CBLogger.Error(
           "Activated",
           "Failed to activate " + name,
           manager.Status
@@ -1118,10 +1104,10 @@ CB.Deactivate = function () {
   // Deactivate all the Managers
   Object.entries(this.Managers).forEach(([name, manager]) => {
     if (manager.Deactivate()) {
-      window.CBLogger.Update("Deactivated", name, manager.Status);
+      window.CBLogger.Warn("Deactivated", name, manager.Status);
     } else {
       // There has been an error, retry
-      window.CBLogger.Update(
+      window.CBLogger.Error(
         "Deactivated",
         "Failed to deactivate " + name,
         manager.Status
