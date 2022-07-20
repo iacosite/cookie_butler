@@ -138,7 +138,7 @@ var CBAutoClicker = {
 
     this.Status.BigCookieClickEventIdentifier = window.setInterval(function () {
       that.ClickBigCookie();
-    }, Math.max(clicking_period, CBDOMUtilities.Settings.TimeBetweenClicks_ms));
+    }, clicking_period);
     window.CBLogger.Warn("Autoclicker::Start", clicking_period, this.Status);
 
     this.Status.Clicking = true;
@@ -1066,10 +1066,10 @@ CB.Managers = {
     "Cursed finger"
   ),
 
-  // Grimoire: new GrimoireManager(
-  //   "grimoire_manager",
-  //   CB.Settings.Managers.Grimoire.CustomSettings
-  // ),
+  Grimoire: new GrimoireManager(
+    "grimoire_manager",
+    CB.Settings.Managers.Grimoire.CustomSettings
+  ),
 
   AutoBuyer: new AutoBuyer(
     "autobuyer_manager",
